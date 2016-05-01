@@ -57,7 +57,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     this->ui->textEdit->moveCursor(QTextCursor::End);
 
     this->ui->textEdit->setTextColor(messageColor);
-    this->ui->textEdit->setFontWeight(100);
+    this->ui->textEdit->setFontWeight(99);
 
     if (displayName.length() > 0) {
         this->ui->textEdit->insertPlainText(displayName);
