@@ -7,6 +7,8 @@ int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
+    a.setStyleSheet("QSplitter::handle { background-color: gray }");
+
     //qputenv("IRC_DEBUG", "1");
 
     if (!QSslSocket::supportsSsl()) {

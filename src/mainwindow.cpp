@@ -26,6 +26,14 @@ MainWindow::MainWindow(QWidget *parent) :
                      &QLineEdit::returnPressed,
                      this->ui->wSend,
                      &QPushButton::click);
+
+    this->ui->splitter->setStretchFactor(0, 0);
+    this->ui->splitter->setStretchFactor(1, 1);
+
+    this->ui->listview_channels->resize(150,
+                                        this->ui->listview_channels->height());
+    this->ui->label->resize(150,
+                            this->ui->label->height());
 }
 
 void
@@ -36,18 +44,26 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     int max_value = scrollbar->maximum();
 
     QString displayName = message->tags()["display-name"].toString();
-    QColor messageColor = QColor(message->tags()["color"].toString());
+    QString colorString = message->tags()["color"].toString();
+    QColor messageColor;
+    if (colorString.length() == 0) {
+        messageColor = QColor("#aa6633");
+    } else {
+        messageColor = QColor(message->tags()["color"].toString());
+    }
 
     QTextCursor prev_cursor = this->ui->textEdit->textCursor();
     this->ui->textEdit->moveCursor(QTextCursor::End);
 
     this->ui->textEdit->setTextColor(messageColor);
+    this->ui->textEdit->setFontWeight(100);
 
     if (displayName.length() > 0) {
         this->ui->textEdit->insertPlainText(displayName);
     } else {
         this->ui->textEdit->insertPlainText(message->nick());
     }
+    this->ui->textEdit->setFontWeight(0);
 
     if (!message->isAction()) {
         this->ui->textEdit->setTextColor(Qt::black);
