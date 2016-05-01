@@ -67,7 +67,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     this->ui->textEdit->setFontWeight(0);
 
     if (!message->isAction()) {
-        this->ui->textEdit->setTextColor(Qt::black);
+        this->ui->textEdit->setTextColor(Qt::gray);
         this->ui->textEdit->insertPlainText(": ");
     } else {
         this->ui->textEdit->insertPlainText(" ");
