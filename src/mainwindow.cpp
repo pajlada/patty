@@ -9,7 +9,8 @@
 #include <IrcMessage>
 #include <QTextDocumentFragment>
 
-IrcClient client;
+IrcClient read;
+IrcClient write;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -17,7 +18,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    QObject::connect(&client,
+    QObject::connect(&read,
                      &IrcConnection::privateMessageReceived,
                      this,
                      &MainWindow::onMessage);
@@ -96,11 +97,12 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_wSend_clicked()
 {
-    client.sendCommand(IrcCommand::createMessage("#pajlada", this->ui->wInput->text()));
+    write.sendCommand(IrcCommand::createMessage("#pajlada", this->ui->wInput->text()));
     this->ui->wInput->clear();
 }
 
 void MainWindow::on_btn_connect_clicked()
 {
-    client.connect();
+    read.connect();
+    write.connect();
 }
