@@ -13,7 +13,7 @@ class EmoteManager : public QObject
 
 public:
     EmoteManager();
-    int EmoteManager::get_twitch_emote(int emote_id);
+    int get_twitch_emote(int emote_id);
 
     QMap<int, QImage> twitch_emotes;
 
