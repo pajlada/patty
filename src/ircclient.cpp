@@ -16,8 +16,8 @@ IrcClient::connect()
     this->setHost("irc.chat.twitch.tv");
     this->setUserName(settings.value("Credentials/username", "justinfan123").toString());
     this->setNickName(settings.value("Credentials/username", "justinfan123").toString());
-    this->setRealName("ASD");
-    this->setPassword(settings.value("Credentials/pass", "oauth:kappa123").toString());
+    this->setRealName("Patty User");
+    this->setPassword(settings.value("Credentials/password", "oauth:kappa123").toString());
 
     this->sendCommand(IrcCommand::createJoin("#pajlada"));
     this->sendCommand(IrcCommand::createJoin("#forsenlol"));
