@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
         */
     }
 
-    QCoreApplication::setOrganizationName("pajlada AB");
+    QCoreApplication::setOrganizationName("pajlada");
     QCoreApplication::setOrganizationDomain("pajlada.se");
     QCoreApplication::setApplicationName("patty");
 
