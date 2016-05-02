@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     }
 
 
-    //qputenv("IRC_DEBUG", "1");
+//    qputenv("IRC_DEBUG", "1");
 
     if (!QSslSocket::supportsSsl()) {
         /*
