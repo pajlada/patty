@@ -27,4 +27,6 @@ HEADERS  += src/mainwindow.h \
     src/ircclient.h \
     src/emotemanager.h
 
+RESOURCES += lib/QDarkStyleSheet/qdarkstyle/style.qrc
+
 FORMS    += src/ui/mainwindow.ui

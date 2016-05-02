@@ -14,6 +14,7 @@
 
 IrcClient read;
 IrcClient write;
+bool connected = false;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -31,6 +32,26 @@ MainWindow::MainWindow(QWidget *parent) :
                      this->ui->wSend,
                      &QPushButton::click);
 
+    QObject::connect(&read,
+                     &IrcConnection::joinMessageReceived,
+                     this,
+                     &MainWindow::onJoin);
+
+    QObject::connect(this->ui->listview_channels,
+                     &QListWidget::itemDoubleClicked,
+                     this,
+                     &MainWindow::removeChannel);
+
+    QObject::connect(this->ui->listview_channels,
+                     &QListWidget::itemSelectionChanged,
+                     this,
+                     &MainWindow::channelChanged);
+
+    QObject::connect(this->ui->cInput,
+                     &QLineEdit::returnPressed,
+                     this->ui->cJoin,
+                     &QPushButton::click);
+
     this->ui->splitter->setStretchFactor(0, 0);
     this->ui->splitter->setStretchFactor(1, 1);
 
@@ -38,6 +59,10 @@ MainWindow::MainWindow(QWidget *parent) :
                                         this->ui->listview_channels->height());
     this->ui->label->resize(150,
                             this->ui->label->height());
+    this->ui->cInput->setEnabled(false);
+    this->ui->cJoin->setEnabled(false);
+    this->ui->wInput->setEnabled(false);
+    this->ui->wSend->setEnabled(false);
 }
 
 struct EmoteReplacement
@@ -75,7 +100,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     this->ui->textEdit->moveCursor(QTextCursor::End);
 
     this->ui->textEdit->setTextColor(messageColor);
-    this->ui->textEdit->setFontWeight(100);
+    this->ui->textEdit->setFontWeight(99);
 
     if (displayName.length() > 0) {
         this->ui->textEdit->insertPlainText(displayName);
@@ -85,7 +110,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     this->ui->textEdit->setFontWeight(0);
 
     if (!message->isAction()) {
-        this->ui->textEdit->setTextColor(Qt::black);
+        this->ui->textEdit->setTextColor(Qt::gray);
         this->ui->textEdit->insertPlainText(": ");
     } else {
         this->ui->textEdit->insertPlainText(" ");
@@ -149,6 +174,41 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     }
 }
 
+void
+MainWindow::onJoin(IrcJoinMessage *message) {
+    if (!connected) {
+        this->setWindowTitle("Connected");
+        this->ui->cInput->setEnabled(true);
+        this->ui->cJoin->setEnabled(true);
+        connected = false;
+    }
+    QListWidgetItem* item = new QListWidgetItem(message->channel(), this->ui->listview_channels, 0);
+    this->ui->listview_channels->addItem(item);
+}
+
+void
+MainWindow::removeChannel(QListWidgetItem *item) {
+    IrcCommand* part = IrcCommand::createPart(item->text());
+    write.sendCommand(part);
+    read.sendCommand(part);
+    delete item;
+    if (this->ui->listview_channels->count() == 0) {
+        this->ui->wChannel->setText("");
+        this->ui->wInput->setEnabled(false);
+        this->ui->wSend->setEnabled(false);
+    }
+}
+
+void
+MainWindow::channelChanged() {
+    QListWidgetItem* item = this->ui->listview_channels->currentItem();
+    if (item) {
+        this->ui->wChannel->setText(item->text());
+        this->ui->wInput->setEnabled(true);
+        this->ui->wSend->setEnabled(true);
+    }
+}
+
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -156,8 +216,24 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_wSend_clicked()
 {
-    write.sendCommand(IrcCommand::createMessage("#pajlada", this->ui->wInput->text()));
+    write.sendCommand(IrcCommand::createMessage(this->ui->wChannel->text(), this->ui->wInput->text()));
     this->ui->wInput->clear();
+}
+
+void MainWindow::on_cJoin_clicked()
+{
+    QString channel = this->ui->cInput->text();
+    if (!channel.startsWith("#")) {
+        channel = "#" + channel;
+    }
+    QList<QListWidgetItem *> list = this->ui->listview_channels->findItems(channel, Qt::MatchCaseSensitive);
+    if (list.length() > 0) {
+        return;
+    }
+    IrcCommand* join = IrcCommand::createJoin(channel);
+    write.sendCommand(join);
+    read.sendCommand(join);
+    this->ui->cInput->clear();
 }
 
 void MainWindow::on_btn_connect_clicked()

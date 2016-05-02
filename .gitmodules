@@ -1,3 +1,6 @@
 [submodule "lib/libcommuni"]
 	path = lib/libcommuni
 	url = https://github.com/communi/libcommuni.git
+[submodule "lib/QDarkStyleSheet"]
+	path = lib/QDarkStyleSheet
+	url = https://github.com/ColinDuquesnoy/QDarkStyleSheet.git

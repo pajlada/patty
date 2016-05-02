@@ -2,14 +2,26 @@
 #include <QApplication>
 #include <QtNetwork/QSslSocket>
 #include <QMessageBox>
+#include <QFile>
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
-    a.setStyleSheet("QSplitter::handle { background-color: gray }");
+    QFile f(":qdarkstyle/style.qss");
+    if (!f.exists())
+    {
+        printf("Unable to set stylesheet, file not found\n");
+    }
+    else 
+    {
+        f.open(QFile::ReadOnly | QFile::Text);
+        QTextStream ts(&f);
+        qApp->setStyleSheet(ts.readAll());
+    }
 
-    //qputenv("IRC_DEBUG", "1");
+
+//    qputenv("IRC_DEBUG", "1");
 
     if (!QSslSocket::supportsSsl()) {
         /*
