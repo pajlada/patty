@@ -3,11 +3,14 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "ircclient.h"
+#include "emotemanager.h"
 
 #include <QScrollBar>
 #include <IrcCommand>
 #include <IrcMessage>
 #include <QTextDocumentFragment>
+#include <QDebug>
+#include <QDir>
 
 IrcClient read;
 IrcClient write;
@@ -37,6 +40,20 @@ MainWindow::MainWindow(QWidget *parent) :
                             this->ui->label->height());
 }
 
+struct EmoteReplacement
+{
+    int index;
+    int length;
+    QString tag;
+};
+
+bool
+variantByIndex(const struct EmoteReplacement &v1,
+               const struct EmoteReplacement &v2)
+{
+    return v1.index < v2.index;
+}
+
 void
 MainWindow::onMessage(IrcPrivateMessage *message)
 {
@@ -46,6 +63,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
 
     QString displayName = message->tags()["display-name"].toString();
     QString colorString = message->tags()["color"].toString();
+    QString emotesString = message->tags()["emotes"].toString();
     QColor messageColor;
     if (colorString.length() == 0) {
         messageColor = QColor("#aa6633");
@@ -73,10 +91,51 @@ MainWindow::onMessage(IrcPrivateMessage *message)
         this->ui->textEdit->insertPlainText(" ");
     }
 
-    this->ui->textEdit->insertPlainText(message->content());
+    const QString &content = message->content();
+    QString html_content(content);
 
-    // insert image. not sure if this is how we'll do it
-    // this->ui->textEdit->insertHtml("<img src=\"file:///D:\\data\\pictures\\Kappa.png\">");
+    if (emotesString.length() > 0) {
+        QStringList unique_emotes = emotesString.split('/');
+        QList<struct EmoteReplacement> replacements;
+        for (auto unique_emote : unique_emotes) {
+            int emote_id = unique_emote.section(':', 0, 0).toInt();
+            int v = emote_manager.get_twitch_emote(emote_id);
+            QStringList emote_occurences = unique_emote.section(':', 1, 1).split(',');
+            for (auto emote_occurence : emote_occurences) {
+                int begin = emote_occurence.section('-', 0, 0).toInt();
+                int end = emote_occurence.section('-', 1, 1).toInt();
+                QString image_tag = QString("<img src=\"file:///%1%2%3.png?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote_id).arg(v);
+                replacements.append(EmoteReplacement {
+                                        begin,
+                                        end - begin + 1,
+                                        image_tag
+                                    });
+            }
+        }
+
+        int offset = 0;
+        qSort(replacements.begin(), replacements.end(), variantByIndex);
+        int last_i = 0;
+        for (auto replacement : replacements) {
+            /* Figure out if we need to increase the offset due to
+               unicode characters. */
+            for (int i=last_i+offset; i < replacement.index + offset; ++i) {
+                const QChar &c = html_content[i];
+                if (c.isHighSurrogate()) {
+                    // qDebug() << "offset += 1 due to high surrogate";
+                    offset += 1;
+                }
+            }
+            last_i = replacement.index;
+            html_content = html_content.replace(replacement.index + offset,
+                                 replacement.length,
+                                 replacement.tag);
+
+            offset += replacement.tag.length() - replacement.length;
+        }
+    }
+
+    this->ui->textEdit->insertHtml(html_content);
 
     this->ui->textEdit->insertPlainText("\n");
 

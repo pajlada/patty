@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include "emotemanager.h"
 
 namespace Ui {
 class MainWindow;
@@ -26,6 +27,8 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+
+    EmoteManager emote_manager;
 };
 
 #endif // MAINWINDOW_H
