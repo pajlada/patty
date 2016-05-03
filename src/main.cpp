@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     }
 
 
-    //qputenv("IRC_DEBUG", "1");
+//    qputenv("IRC_DEBUG", "1");
 
     if (!QSslSocket::supportsSsl()) {
         /*
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
         */
     }
 
-    QCoreApplication::setOrganizationName("pajlada AB");
+    QCoreApplication::setOrganizationName("pajlada");
     QCoreApplication::setOrganizationDomain("pajlada.se");
     QCoreApplication::setApplicationName("patty");
 

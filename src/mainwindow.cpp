@@ -3,14 +3,18 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "ircclient.h"
+#include "emotemanager.h"
 
 #include <QScrollBar>
 #include <IrcCommand>
 #include <IrcMessage>
 #include <QTextDocumentFragment>
+#include <QDebug>
+#include <QDir>
 
 IrcClient read;
 IrcClient write;
+bool connected = false;
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -28,6 +32,26 @@ MainWindow::MainWindow(QWidget *parent) :
                      this->ui->wSend,
                      &QPushButton::click);
 
+    QObject::connect(&read,
+                     &IrcConnection::joinMessageReceived,
+                     this,
+                     &MainWindow::onJoin);
+
+    QObject::connect(this->ui->listview_channels,
+                     &QListWidget::itemDoubleClicked,
+                     this,
+                     &MainWindow::removeChannel);
+
+    QObject::connect(this->ui->listview_channels,
+                     &QListWidget::itemSelectionChanged,
+                     this,
+                     &MainWindow::channelChanged);
+
+    QObject::connect(this->ui->cInput,
+                     &QLineEdit::returnPressed,
+                     this->ui->cJoin,
+                     &QPushButton::click);
+
     this->ui->splitter->setStretchFactor(0, 0);
     this->ui->splitter->setStretchFactor(1, 1);
 
@@ -35,6 +59,24 @@ MainWindow::MainWindow(QWidget *parent) :
                                         this->ui->listview_channels->height());
     this->ui->label->resize(150,
                             this->ui->label->height());
+    this->ui->cInput->setEnabled(false);
+    this->ui->cJoin->setEnabled(false);
+    this->ui->wInput->setEnabled(false);
+    this->ui->wSend->setEnabled(false);
+}
+
+struct EmoteReplacement
+{
+    int index;
+    int length;
+    QString tag;
+};
+
+bool
+variantByIndex(const struct EmoteReplacement &v1,
+               const struct EmoteReplacement &v2)
+{
+    return v1.index < v2.index;
 }
 
 void
@@ -46,6 +88,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
 
     QString displayName = message->tags()["display-name"].toString();
     QString colorString = message->tags()["color"].toString();
+    QString emotesString = message->tags()["emotes"].toString();
     QColor messageColor;
     if (colorString.length() == 0) {
         messageColor = QColor("#aa6633");
@@ -73,10 +116,51 @@ MainWindow::onMessage(IrcPrivateMessage *message)
         this->ui->textEdit->insertPlainText(" ");
     }
 
-    this->ui->textEdit->insertPlainText(message->content());
+    const QString &content = message->content();
+    QString html_content(content);
 
-    // insert image. not sure if this is how we'll do it
-    // this->ui->textEdit->insertHtml("<img src=\"file:///D:\\data\\pictures\\Kappa.png\">");
+    if (emotesString.length() > 0) {
+        QStringList unique_emotes = emotesString.split('/');
+        QList<struct EmoteReplacement> replacements;
+        for (auto unique_emote : unique_emotes) {
+            int emote_id = unique_emote.section(':', 0, 0).toInt();
+            int v = emote_manager.get_twitch_emote(emote_id);
+            QStringList emote_occurences = unique_emote.section(':', 1, 1).split(',');
+            for (auto emote_occurence : emote_occurences) {
+                int begin = emote_occurence.section('-', 0, 0).toInt();
+                int end = emote_occurence.section('-', 1, 1).toInt();
+                QString image_tag = QString("<img src=\"file:///%1%2%3.png?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote_id).arg(v);
+                replacements.append(EmoteReplacement {
+                                        begin,
+                                        end - begin + 1,
+                                        image_tag
+                                    });
+            }
+        }
+
+        int offset = 0;
+        qSort(replacements.begin(), replacements.end(), variantByIndex);
+        int last_i = 0;
+        for (auto replacement : replacements) {
+            /* Figure out if we need to increase the offset due to
+               unicode characters. */
+            for (int i=last_i+offset; i < replacement.index + offset; ++i) {
+                const QChar &c = html_content[i];
+                if (c.isHighSurrogate()) {
+                    // qDebug() << "offset += 1 due to high surrogate";
+                    offset += 1;
+                }
+            }
+            last_i = replacement.index;
+            html_content = html_content.replace(replacement.index + offset,
+                                 replacement.length,
+                                 replacement.tag);
+
+            offset += replacement.tag.length() - replacement.length;
+        }
+    }
+
+    this->ui->textEdit->insertHtml(html_content);
 
     this->ui->textEdit->insertPlainText("\n");
 
@@ -90,6 +174,41 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     }
 }
 
+void
+MainWindow::onJoin(IrcJoinMessage *message) {
+    if (!connected) {
+        this->setWindowTitle("Connected");
+        this->ui->cInput->setEnabled(true);
+        this->ui->cJoin->setEnabled(true);
+        connected = false;
+    }
+    QListWidgetItem* item = new QListWidgetItem(message->channel(), this->ui->listview_channels, 0);
+    this->ui->listview_channels->addItem(item);
+}
+
+void
+MainWindow::removeChannel(QListWidgetItem *item) {
+    IrcCommand* part = IrcCommand::createPart(item->text());
+    write.sendCommand(part);
+    read.sendCommand(part);
+    delete item;
+    if (this->ui->listview_channels->count() == 0) {
+        this->ui->wChannel->setText("");
+        this->ui->wInput->setEnabled(false);
+        this->ui->wSend->setEnabled(false);
+    }
+}
+
+void
+MainWindow::channelChanged() {
+    QListWidgetItem* item = this->ui->listview_channels->currentItem();
+    if (item) {
+        this->ui->wChannel->setText(item->text());
+        this->ui->wInput->setEnabled(true);
+        this->ui->wSend->setEnabled(true);
+    }
+}
+
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -97,8 +216,24 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_wSend_clicked()
 {
-    write.sendCommand(IrcCommand::createMessage("#pajlada", this->ui->wInput->text()));
+    write.sendCommand(IrcCommand::createMessage(this->ui->wChannel->text(), this->ui->wInput->text()));
     this->ui->wInput->clear();
+}
+
+void MainWindow::on_cJoin_clicked()
+{
+    QString channel = this->ui->cInput->text();
+    if (!channel.startsWith("#")) {
+        channel = "#" + channel;
+    }
+    QList<QListWidgetItem *> list = this->ui->listview_channels->findItems(channel, Qt::MatchCaseSensitive);
+    if (list.length() > 0) {
+        return;
+    }
+    IrcCommand* join = IrcCommand::createJoin(channel);
+    write.sendCommand(join);
+    read.sendCommand(join);
+    this->ui->cInput->clear();
 }
 
 void MainWindow::on_btn_connect_clicked()

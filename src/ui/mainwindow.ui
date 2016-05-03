@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>Disconnected</string>
   </property>
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -36,7 +36,7 @@
        <number>4</number>
       </property>
       <widget class="QWidget" name="verticalLayoutWidget_2">
-       <layout class="QVBoxLayout" name="layout_channels" stretch="0,0">
+       <layout class="QVBoxLayout" name="layout_channels" stretch="0,0,0">
         <property name="sizeConstraint">
          <enum>QLayout::SetMinimumSize</enum>
         </property>
@@ -82,7 +82,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QListView" name="listview_channels">
+         <widget class="QListWidget" name="listview_channels">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
             <horstretch>0</horstretch>
@@ -109,6 +109,20 @@
           </property>
          </widget>
         </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <widget class="QLineEdit" name="cInput"/>
+          </item>
+          <item>
+           <widget class="QPushButton" name="cJoin">
+            <property name="text">
+             <string>Join</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
        </layout>
       </widget>
       <widget class="QWidget" name="verticalLayoutWidget">
@@ -122,6 +136,12 @@
         </item>
         <item>
          <widget class="QTextEdit" name="textEdit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="acceptRichText">
            <bool>false</bool>
           </property>
@@ -132,6 +152,13 @@
         </item>
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QLabel" name="wChannel">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
           <item>
            <widget class="QLineEdit" name="wInput"/>
           </item>
@@ -162,7 +189,7 @@
      <x>0</x>
      <y>0</y>
      <width>734</width>
-     <height>18</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>
@@ -178,16 +205,11 @@
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <tabstops>
-  <tabstop>wInput</tabstop>
-  <tabstop>wSend</tabstop>
-  <tabstop>textEdit</tabstop>
   <tabstop>btn_connect</tabstop>
-  <tabstop>listview_channels</tabstop>
-  <tabstop>listview_channels_2</tabstop>
-  <tabstop>wInput_2</tabstop>
-  <tabstop>wSend_2</tabstop>
-  <tabstop>textEdit_2</tabstop>
-  <tabstop>btn_connect_2</tabstop>
+  <tabstop>textEdit</tabstop>
+  <tabstop>cJoin</tabstop>
+  <tabstop>wSend</tabstop>
+  <tabstop>cInput</tabstop>
  </tabstops>
  <resources/>
  <connections/>

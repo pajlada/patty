@@ -20,10 +20,12 @@ include(lib/libcommuni/src/src.pri)
 
 SOURCES += src/main.cpp\
         src/mainwindow.cpp \
-    src/ircclient.cpp
+    src/ircclient.cpp \
+    src/emotemanager.cpp
 
 HEADERS  += src/mainwindow.h \
-    src/ircclient.h
+    src/ircclient.h \
+    src/emotemanager.h
 
 RESOURCES += lib/QDarkStyleSheet/qdarkstyle/style.qrc
 
