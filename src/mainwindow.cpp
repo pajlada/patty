@@ -186,7 +186,8 @@ MainWindow::onMessage(IrcPrivateMessage *message)
 }
 
 void
-MainWindow::onJoin(IrcJoinMessage *message) {
+MainWindow::onJoin(IrcJoinMessage *message)
+{
     if (!connected) {
         this->setWindowTitle("Connected");
         this->ui->cInput->setEnabled(true);
@@ -199,14 +200,16 @@ MainWindow::onJoin(IrcJoinMessage *message) {
     QTextEdit* chatTextEdit = new QTextEdit();
     chatTextEdit->setReadOnly(true);
     chatTextEdit->setGeometry(this->ui->textEdit->geometry());
-    if (this->channelChats.size() == 0)
+    if (this->channelChats.size() == 0) {
         switchChat(chatTextEdit);
+    }
 
     this->channelChats.insert(message->channel(), chatTextEdit);
 }
 
 void
-MainWindow::removeChannel(QListWidgetItem *item) {
+MainWindow::removeChannel(QListWidgetItem *item)
+{
     IrcCommand* part = IrcCommand::createPart(item->text());
     write.sendCommand(part);
     read.sendCommand(part);
@@ -221,7 +224,8 @@ MainWindow::removeChannel(QListWidgetItem *item) {
 }
 
 void
-MainWindow::channelChanged() {
+MainWindow::channelChanged()
+{
     QListWidgetItem* item = this->ui->listview_channels->currentItem();
     if (item) {
         this->ui->wChannel->setText(item->text());
@@ -229,15 +233,16 @@ MainWindow::channelChanged() {
         this->ui->wSend->setEnabled(true);
 
         QMap<QString, QTextEdit*>::iterator itr = this->channelChats.find(item->text());
-        if (itr != this->channelChats.end())
+        if (itr != this->channelChats.end()) {
             switchChat(*itr);
+        }
     }
 }
 
 void
-MainWindow::switchChat(QTextEdit* chatEdit) {
-    if (this->currentChat)
-    {
+MainWindow::switchChat(QTextEdit* chatEdit)
+{
+    if (this->currentChat) {
         this->currentChat->hide();
         chatEdit->setGeometry(this->currentChat->geometry());
         chatEdit->setSizePolicy(this->currentChat->sizePolicy());
