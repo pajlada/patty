@@ -7,7 +7,7 @@
 QT       += core gui
 QT       += network
 
-CONFIG += communi
+CONFIG += communi c++11
 COMMUNI += core model util
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
