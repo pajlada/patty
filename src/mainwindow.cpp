@@ -63,6 +63,8 @@ MainWindow::MainWindow(QWidget *parent) :
     this->ui->cJoin->setEnabled(false);
     this->ui->wInput->setEnabled(false);
     this->ui->wSend->setEnabled(false);
+
+    currentChat = this->ui->textEdit;
 }
 
 struct EmoteReplacement
@@ -82,7 +84,16 @@ variantByIndex(const struct EmoteReplacement &v1,
 void
 MainWindow::onMessage(IrcPrivateMessage *message)
 {
-    QScrollBar *scrollbar = this->ui->textEdit->verticalScrollBar();
+    QMap<QString, QTextEdit*>::iterator itr = this->channelChats.find(message->target());
+    if (itr == this->channelChats.end())
+    {
+        // @todo: Private messages are going to have the nickname in target() probably.
+        return;
+    }
+
+    QTextEdit* channelChat = *itr;
+
+    QScrollBar *scrollbar = channelChat->verticalScrollBar();
     int cur_value = scrollbar->value();
     int max_value = scrollbar->maximum();
 
@@ -96,24 +107,24 @@ MainWindow::onMessage(IrcPrivateMessage *message)
         messageColor = QColor(message->tags()["color"].toString());
     }
 
-    QTextCursor prev_cursor = this->ui->textEdit->textCursor();
-    this->ui->textEdit->moveCursor(QTextCursor::End);
+    QTextCursor prev_cursor = channelChat->textCursor();
+    channelChat->moveCursor(QTextCursor::End);
 
-    this->ui->textEdit->setTextColor(messageColor);
-    this->ui->textEdit->setFontWeight(99);
+    channelChat->setTextColor(messageColor);
+    channelChat->setFontWeight(99);
 
     if (displayName.length() > 0) {
-        this->ui->textEdit->insertPlainText(displayName);
+        channelChat->insertPlainText(displayName);
     } else {
-        this->ui->textEdit->insertPlainText(message->nick());
+        channelChat->insertPlainText(message->nick());
     }
-    this->ui->textEdit->setFontWeight(0);
+    channelChat->setFontWeight(0);
 
     if (!message->isAction()) {
-        this->ui->textEdit->setTextColor(Qt::gray);
-        this->ui->textEdit->insertPlainText(": ");
+        channelChat->setTextColor(Qt::gray);
+        channelChat->insertPlainText(": ");
     } else {
-        this->ui->textEdit->insertPlainText(" ");
+        channelChat->insertPlainText(" ");
     }
 
     const QString &content = message->content();
@@ -160,11 +171,11 @@ MainWindow::onMessage(IrcPrivateMessage *message)
         }
     }
 
-    this->ui->textEdit->insertHtml(html_content);
+    channelChat->insertHtml(html_content);
 
-    this->ui->textEdit->insertPlainText("\n");
+    channelChat->insertPlainText("\n");
 
-    this->ui->textEdit->setTextCursor(prev_cursor);
+    channelChat->setTextCursor(prev_cursor);
 
     if (cur_value == max_value) {
         // Scroll to the bottom if the user has not scrolled up
@@ -184,6 +195,14 @@ MainWindow::onJoin(IrcJoinMessage *message) {
     }
     QListWidgetItem* item = new QListWidgetItem(message->channel(), this->ui->listview_channels, 0);
     this->ui->listview_channels->addItem(item);
+
+    QTextEdit* chatTextEdit = new QTextEdit();
+    chatTextEdit->setReadOnly(true);
+    chatTextEdit->setGeometry(this->ui->textEdit->geometry());
+    if (this->channelChats.size() == 0)
+        switchChat(chatTextEdit);
+
+    this->channelChats.insert(message->channel(), chatTextEdit);
 }
 
 void
@@ -191,12 +210,14 @@ MainWindow::removeChannel(QListWidgetItem *item) {
     IrcCommand* part = IrcCommand::createPart(item->text());
     write.sendCommand(part);
     read.sendCommand(part);
-    delete item;
     if (this->ui->listview_channels->count() == 0) {
         this->ui->wChannel->setText("");
         this->ui->wInput->setEnabled(false);
         this->ui->wSend->setEnabled(false);
     }
+
+    this->channelChats.remove(item->text());
+    delete item;
 }
 
 void
@@ -206,6 +227,24 @@ MainWindow::channelChanged() {
         this->ui->wChannel->setText(item->text());
         this->ui->wInput->setEnabled(true);
         this->ui->wSend->setEnabled(true);
+
+        QMap<QString, QTextEdit*>::iterator itr = this->channelChats.find(item->text());
+        if (itr != this->channelChats.end())
+            switchChat(*itr);
+    }
+}
+
+void
+MainWindow::switchChat(QTextEdit* chatEdit) {
+    if (this->currentChat)
+    {
+        this->currentChat->hide();
+        chatEdit->setGeometry(this->currentChat->geometry());
+        chatEdit->setSizePolicy(this->currentChat->sizePolicy());
+        this->ui->verticalLayout->removeWidget(this->currentChat);
+        this->ui->verticalLayout->insertWidget(1, chatEdit);
+        this->currentChat = chatEdit;
+        this->currentChat->show();
     }
 }
 
