@@ -77,7 +77,7 @@
            <string>Channels</string>
           </property>
           <property name="buddy">
-           <cstring>textEdit</cstring>
+           <cstring>baseChatWindow</cstring>
           </property>
          </widget>
         </item>
@@ -135,7 +135,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QTextEdit" name="textEdit">
+         <widget class="QTextBrowser" name="baseChatWindow">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
             <horstretch>0</horstretch>
@@ -147,6 +147,9 @@
           </property>
           <property name="textInteractionFlags">
            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+          </property>
+          <property name="openExternalLinks">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
@@ -189,7 +192,7 @@
      <x>0</x>
      <y>0</y>
      <width>734</width>
-     <height>23</height>
+     <height>18</height>
     </rect>
    </property>
   </widget>
@@ -206,7 +209,7 @@
  <layoutdefault spacing="6" margin="11"/>
  <tabstops>
   <tabstop>btn_connect</tabstop>
-  <tabstop>textEdit</tabstop>
+  <tabstop>baseChatWindow</tabstop>
   <tabstop>cJoin</tabstop>
   <tabstop>wSend</tabstop>
   <tabstop>cInput</tabstop>

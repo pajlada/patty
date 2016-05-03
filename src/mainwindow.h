@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QMap>
 #include <QString>
-#include <QTextEdit>
+#include <QTextBrowser>
 #include "emotemanager.h"
 
 namespace Ui {
@@ -28,7 +28,7 @@ public:
     void removeChannel(QListWidgetItem *item);
     void channelChanged();
 
-    void switchChat(QTextEdit* chatEdit);
+    void switchChat(QTextBrowser* chatEdit);
 
 private slots:
     void on_wSend_clicked();
@@ -41,8 +41,8 @@ private:
 
     EmoteManager emote_manager;
 
-    QTextEdit* currentChat;
-    QMap<QString, QTextEdit*> channelChats;
+    QTextBrowser* currentChat;
+    QMap<QString, QTextBrowser*> channelChats;
 };
 
 #endif // MAINWINDOW_H

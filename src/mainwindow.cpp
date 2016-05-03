@@ -16,6 +16,8 @@ IrcClient read;
 IrcClient write;
 bool connected = false;
 
+QString default_stylesheet;
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -64,7 +66,12 @@ MainWindow::MainWindow(QWidget *parent) :
     this->ui->wInput->setEnabled(false);
     this->ui->wSend->setEnabled(false);
 
-    currentChat = this->ui->textEdit;
+    default_stylesheet = QString("a {"
+                                 "color: #f0f;"
+                                 "}");
+
+    currentChat = this->ui->baseChatWindow;
+    currentChat->document()->setDefaultStyleSheet(default_stylesheet);
 }
 
 struct EmoteReplacement
@@ -84,14 +91,14 @@ variantByIndex(const struct EmoteReplacement &v1,
 void
 MainWindow::onMessage(IrcPrivateMessage *message)
 {
-    QMap<QString, QTextEdit*>::iterator itr = this->channelChats.find(message->target());
+    auto itr = this->channelChats.find(message->target());
     if (itr == this->channelChats.end())
     {
         // @todo: Private messages are going to have the nickname in target() probably.
         return;
     }
 
-    QTextEdit* channelChat = *itr;
+    QTextBrowser* channelChat = *itr;
 
     QScrollBar *scrollbar = channelChat->verticalScrollBar();
     int cur_value = scrollbar->value();
@@ -197,9 +204,11 @@ MainWindow::onJoin(IrcJoinMessage *message)
     QListWidgetItem* item = new QListWidgetItem(message->channel(), this->ui->listview_channels, 0);
     this->ui->listview_channels->addItem(item);
 
-    QTextEdit* chatTextEdit = new QTextEdit();
+    QTextBrowser* chatTextEdit = new QTextBrowser(this);
     chatTextEdit->setReadOnly(true);
-    chatTextEdit->setGeometry(this->ui->textEdit->geometry());
+    chatTextEdit->setGeometry(this->ui->baseChatWindow->geometry());
+    chatTextEdit->setOpenExternalLinks(true);
+    chatTextEdit->document()->setDefaultStyleSheet(default_stylesheet);
     if (this->channelChats.size() == 0) {
         switchChat(chatTextEdit);
     }
@@ -232,7 +241,7 @@ MainWindow::channelChanged()
         this->ui->wInput->setEnabled(true);
         this->ui->wSend->setEnabled(true);
 
-        QMap<QString, QTextEdit*>::iterator itr = this->channelChats.find(item->text());
+        auto itr = this->channelChats.find(item->text());
         if (itr != this->channelChats.end()) {
             switchChat(*itr);
         }
@@ -240,17 +249,20 @@ MainWindow::channelChanged()
 }
 
 void
-MainWindow::switchChat(QTextEdit* chatEdit)
+MainWindow::switchChat(QTextBrowser *chatEdit)
 {
     if (this->currentChat) {
         this->currentChat->hide();
+        /*
         chatEdit->setGeometry(this->currentChat->geometry());
         chatEdit->setSizePolicy(this->currentChat->sizePolicy());
+        */
         this->ui->verticalLayout->removeWidget(this->currentChat);
-        this->ui->verticalLayout->insertWidget(1, chatEdit);
-        this->currentChat = chatEdit;
-        this->currentChat->show();
     }
+
+    this->ui->verticalLayout->insertWidget(1, chatEdit);
+    this->currentChat = chatEdit;
+    this->currentChat->show();
 }
 
 MainWindow::~MainWindow()
