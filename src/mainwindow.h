@@ -2,6 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMap>
+#include <QString>
+#include <QTextEdit>
 #include "emotemanager.h"
 
 namespace Ui {
@@ -25,6 +28,8 @@ public:
     void removeChannel(QListWidgetItem *item);
     void channelChanged();
 
+    void switchChat(QTextEdit* chatEdit);
+
 private slots:
     void on_wSend_clicked();
     void on_cJoin_clicked();
@@ -35,6 +40,9 @@ private:
     Ui::MainWindow *ui;
 
     EmoteManager emote_manager;
+
+    QTextEdit* currentChat;
+    QMap<QString, QTextEdit*> channelChats;
 };
 
 #endif // MAINWINDOW_H

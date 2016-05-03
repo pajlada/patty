@@ -5,7 +5,8 @@
 #include <IrcCommand>
 
 IrcClient::IrcClient(QObject *parent)
-    : IrcConnection(parent)
+    : IrcConnection(parent),
+    channels()
 {
 }
 
@@ -19,16 +20,43 @@ IrcClient::connect()
     this->setRealName("Patty User");
     this->setPassword(settings.value("Credentials/password", "oauth:kappa123").toString());
 
-    this->sendCommand(IrcCommand::createJoin("#pajlada"));
-    this->sendCommand(IrcCommand::createJoin("#forsenlol"));
-    this->sendCommand(IrcCommand::createJoin("#mushisgosu"));
-    this->sendCommand(IrcCommand::createJoin("#trumpsc"));
-    this->sendCommand(IrcCommand::createJoin("#lirik"));
-    this->sendCommand(IrcCommand::createJoin("#tsm_dyrus"));
-    this->sendCommand(IrcCommand::createJoin("#sodapoppin"));
+    this->joinChannel("#pajlada");
+    this->joinChannel("#forsenlol");
+    this->joinChannel("#mushisgosu");
+    this->joinChannel("#trumpsc");
+    this->joinChannel("#lirik");
+    this->joinChannel("#tsm_dyrus");
+    this->joinChannel("#sodapoppin");
 
     this->sendCommand(IrcCommand::createCapability("REQ", "twitch.tv/commands"));
     this->sendCommand(IrcCommand::createCapability("REQ", "twitch.tv/tags"));
 
     this->open();
+}
+
+const QSet<QString>&
+IrcClient::getChannels() const
+{
+    return this->channels;
+}
+
+bool
+IrcClient::isInChannel(const QString& channelName) const
+{
+    return this->channels.contains(channelName);
+}
+
+bool
+IrcClient::joinChannel(const QString& channelName)
+{
+    if (this->channels.contains(channelName))
+        return false;
+
+    if (this->sendCommand(IrcCommand::createJoin(channelName)))
+    {
+       this->channels.insert(channelName);
+       return true;
+    }
+
+    return false;
 }
