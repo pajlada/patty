@@ -6,6 +6,7 @@
 #include <QString>
 #include <QTextBrowser>
 #include "emotemanager.h"
+#include <QRegularExpression>
 
 namespace Ui {
 class MainWindow;
@@ -30,6 +31,8 @@ public:
 
     void switchChat(QTextBrowser* chatEdit);
 
+    int parseLinks(QString &htmlContent);
+
 private slots:
     void on_wSend_clicked();
     void on_cJoin_clicked();
@@ -40,6 +43,8 @@ private:
     Ui::MainWindow *ui;
 
     EmoteManager emote_manager;
+
+    QRegularExpression url_regex;
 
     QTextBrowser* currentChat;
     QMap<QString, QTextBrowser*> channelChats;

@@ -18,9 +18,12 @@ bool connected = false;
 
 QString default_stylesheet;
 
+#define URL_REGEX "((?:https?|ftp)://\\S+)"
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::MainWindow)
+    ui(new Ui::MainWindow),
+    url_regex(URL_REGEX, QRegularExpression::CaseInsensitiveOption)
 {
     ui->setupUi(this);
 
@@ -178,6 +181,8 @@ MainWindow::onMessage(IrcPrivateMessage *message)
         }
     }
 
+    this->parseLinks(html_content);
+
     channelChat->insertHtml(html_content);
 
     channelChat->insertPlainText("\n");
@@ -190,6 +195,31 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     } else {
         scrollbar->setValue(cur_value);
     }
+}
+
+int
+MainWindow::parseLinks(QString &htmlContent)
+{
+    int num_links = 0;
+    int offset = 0;
+
+    QRegularExpressionMatchIterator it = this->url_regex.globalMatch(htmlContent);
+
+    while (it.hasNext()) {
+        QRegularExpressionMatch match = it.next();
+
+        num_links += 1;
+
+        QString url = match.captured(1);
+        // We're adding an extra space here to make sure links don't carry over to the next line
+        QString new_url = QString("<a href=\"%1\">%1</a> ").arg(url);
+        htmlContent.replace(match.capturedStart(1) + offset, match.capturedLength(1), new_url);
+        // 15 is the amount of extra characters added by the new html tags
+        // 1 is the extra space
+        offset += url.length() + 15 + 1;
+    }
+
+    return num_links;
 }
 
 void
