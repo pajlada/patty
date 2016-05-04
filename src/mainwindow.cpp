@@ -212,8 +212,6 @@ MainWindow::onMessage(IrcPrivateMessage *message)
 
     channelChat->insertHtml(html_message);
 
-//    channelChat->insertPlainText("\n");
-
     channelChat->setTextCursor(prev_cursor);
 
     if (cur_value == max_value) {

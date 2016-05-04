@@ -4,24 +4,19 @@
 #include <QMessageBox>
 #include <QFile>
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
 
     QFile f(":qdarkstyle/style.qss");
-    if (!f.exists())
-    {
+    if (!f.exists()) {
         printf("Unable to set stylesheet, file not found\n");
-    }
-    else 
-    {
+    } else {
         f.open(QFile::ReadOnly | QFile::Text);
         QTextStream ts(&f);
         qApp->setStyleSheet(ts.readAll());
     }
-
-
-//    qputenv("IRC_DEBUG", "1");
 
     if (!QSslSocket::supportsSsl()) {
         /*

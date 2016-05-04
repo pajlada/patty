@@ -52,8 +52,9 @@ IrcClient::isInChannel(const QString& channelName) const
 bool
 IrcClient::joinChannel(const QString& channelName)
 {
-    if (this->channels.contains(channelName))
+    if (this->channels.contains(channelName)) {
         return false;
+    }
 
     if (this->sendCommand(IrcCommand::createJoin(channelName)))
     {
