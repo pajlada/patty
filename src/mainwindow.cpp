@@ -114,6 +114,9 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     int max_value = scrollbar->maximum();
 
     QString displayName = message->tags()["display-name"].toString();
+    if (displayName.length() == 0) {
+        displayName = message->nick();
+    }
     QString colorString = message->tags()["color"].toString();
     QString emotesString = message->tags()["emotes"].toString();
     QColor messageColor;
@@ -195,6 +198,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
 
     if (!message->isAction()) html_message += "</span>:";
 
+    this->parseLinks(html_content);
     html_message += " " + html_content;
     for (int i = 0; i < this->mentions.count(); ++i) {
         auto mention = this->mentions.at(i);
@@ -205,7 +209,6 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     }
     if (message->isAction()) html_message += "</span>";
     html_message += "</td>";
-    this->parseLinks(html_message);
 
     channelChat->insertHtml(html_message);
 
