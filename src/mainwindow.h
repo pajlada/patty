@@ -43,6 +43,7 @@ private:
 
     QTextBrowser* currentChat;
     QMap<QString, QTextBrowser*> channelChats;
+    QList<QRegExp> mentions;
 };
 
 #endif // MAINWINDOW_H
