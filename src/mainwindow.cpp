@@ -71,6 +71,12 @@ MainWindow::MainWindow(QWidget *parent) :
 
     default_stylesheet = QString("a {"
                                  "color: #f0f;"
+                                 "}"
+                                 ".username {"
+                                 "font-weight: bold;"
+                                 "}"
+                                 ".mention td {"
+                                 "background-color: rgba(255, 0, 0, .4) !important;"
                                  "}");
 
     currentChat = this->ui->baseChatWindow;
@@ -120,23 +126,6 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     QTextCursor prev_cursor = channelChat->textCursor();
     channelChat->moveCursor(QTextCursor::End);
 
-    channelChat->setTextColor(messageColor);
-    channelChat->setFontWeight(99);
-
-    if (displayName.length() > 0) {
-        channelChat->insertPlainText(displayName);
-    } else {
-        channelChat->insertPlainText(message->nick());
-    }
-    channelChat->setFontWeight(0);
-
-    if (!message->isAction()) {
-        channelChat->setTextColor(Qt::gray);
-        channelChat->insertPlainText(": ");
-    } else {
-        channelChat->insertPlainText(" ");
-    }
-
     const QString &content = message->content();
     QString html_content(content);
 
@@ -158,7 +147,6 @@ MainWindow::onMessage(IrcPrivateMessage *message)
                                     });
             }
         }
-
         int offset = 0;
         qSort(replacements.begin(), replacements.end(), variantByIndex);
         int last_i = 0;
@@ -171,21 +159,57 @@ MainWindow::onMessage(IrcPrivateMessage *message)
                     // qDebug() << "offset += 1 due to high surrogate";
                     offset += 1;
                 }
+                // ANTI-PAJLADA-TRIGGER ACTIVATE BEEP BOOP
+                if (c == '>' || c == '<') {
+                    offset += 3;
+                }
+                if (c == '>') {
+                    html_content = html_content.replace(i, 1, "&gt;");
+                }
+                if (c == '<') {
+                    html_content = html_content.replace(i, 1, "&lt;");
+                }
             }
-            last_i = replacement.index;
+            last_i = replacement.index + replacement.length;
             html_content = html_content.replace(replacement.index + offset,
                                  replacement.length,
                                  replacement.tag);
 
             offset += replacement.tag.length() - replacement.length;
         }
+        for (int i = last_i+offset; i < html_content.length(); ++i) {
+            const QChar &c = html_content[i];
+            // ANTI-PAJLADA-TRIGGER ACTIVATE BEEP BOOP
+            if (c == '>') {
+                html_content = html_content.replace(i, 1, "&gt;");
+            }
+            if (c == '<') {
+                html_content = html_content.replace(i, 1, "&lt;");
+            }
+        }
+    } else {
+        html_content = html_content.replace("<", "&lt;").replace(">", "&gt;");
     }
+    QString html_message = "<td class=\"message\" width=\"100%\">";
+    html_message += "<span class=\"username\" style=\"color: " + messageColor.name() + ";\">" + displayName;
 
-    this->parseLinks(html_content);
+    if (!message->isAction()) html_message += "</span>:";
 
-    channelChat->insertHtml(html_content);
+    html_message += " " + html_content;
+    for (int i = 0; i < this->mentions.count(); ++i) {
+        auto mention = this->mentions.at(i);
+        if (mention.indexIn(content) >= 0) {
+            html_message = "<div class=\"mention\">" + html_message;
+            html_message += "</div>";
+        }
+    }
+    if (message->isAction()) html_message += "</span>";
+    html_message += "</td>";
+    this->parseLinks(html_message);
 
-    channelChat->insertPlainText("\n");
+    channelChat->insertHtml(html_message);
+
+//    channelChat->insertPlainText("\n");
 
     channelChat->setTextCursor(prev_cursor);
 
@@ -326,4 +350,6 @@ void MainWindow::on_btn_connect_clicked()
 {
     read.connect();
     write.connect();
+    // Default mention added for now, until something like loadable mentions or etc. is added
+    this->mentions.append(QRegExp("\\b@?" + QRegExp::escape(write.nickName()) + "\\b", Qt::CaseInsensitive));
 }
