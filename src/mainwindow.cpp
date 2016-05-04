@@ -152,7 +152,6 @@ MainWindow::onMessage(IrcPrivateMessage *message)
                unicode characters. */
             for (int i=last_i+offset; i < replacement.index + offset; ++i) {
                 const QChar &c = html_content[i];
-                qDebug() << c;
                 if (c.isHighSurrogate()) {
                     // qDebug() << "offset += 1 due to high surrogate";
                     offset += 1;
