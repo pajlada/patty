@@ -62,8 +62,6 @@ MainWindow::MainWindow(QWidget *parent) :
 
     this->ui->listview_channels->resize(150,
                                         this->ui->listview_channels->height());
-    this->ui->label->resize(150,
-                            this->ui->label->height());
     this->ui->cInput->setEnabled(false);
     this->ui->cJoin->setEnabled(false);
     this->ui->wInput->setEnabled(false);
@@ -304,6 +302,15 @@ MainWindow::channelChanged()
 }
 
 void
+MainWindow::connectToIrc()
+{
+    read.connect();
+    write.connect();
+    // Default mention added for now, until something like loadable mentions or etc. is added
+    this->mentions.append(QRegExp("\\b@?" + QRegExp::escape(write.nickName()) + "\\b", Qt::CaseInsensitive));
+}
+
+void
 MainWindow::switchChat(QTextBrowser *chatEdit)
 {
     if (this->currentChat) {
@@ -315,7 +322,7 @@ MainWindow::switchChat(QTextBrowser *chatEdit)
         this->ui->verticalLayout->removeWidget(this->currentChat);
     }
 
-    this->ui->verticalLayout->insertWidget(1, chatEdit);
+    this->ui->verticalLayout->insertWidget(0, chatEdit);
     this->currentChat = chatEdit;
     this->currentChat->show();
 }
@@ -345,12 +352,4 @@ void MainWindow::on_cJoin_clicked()
     write.sendCommand(join);
     read.sendCommand(join);
     this->ui->cInput->clear();
-}
-
-void MainWindow::on_btn_connect_clicked()
-{
-    read.connect();
-    write.connect();
-    // Default mention added for now, until something like loadable mentions or etc. is added
-    this->mentions.append(QRegExp("\\b@?" + QRegExp::escape(write.nickName()) + "\\b", Qt::CaseInsensitive));
 }

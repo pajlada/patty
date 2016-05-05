@@ -24,6 +24,8 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    void connectToIrc();
+
     void onMessage(IrcPrivateMessage *message);
     void onJoin(IrcJoinMessage *message);
     void removeChannel(QListWidgetItem *item);
@@ -36,8 +38,6 @@ public:
 private slots:
     void on_wSend_clicked();
     void on_cJoin_clicked();
-
-    void on_btn_connect_clicked();
 
 private:
     Ui::MainWindow *ui;
