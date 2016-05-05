@@ -191,6 +191,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     } else {
         html_content = html_content.replace("<", "&lt;").replace(">", "&gt;");
     }
+    this->parseBttvEmotes(html_content);
     QString html_message = "<td class=\"message\" width=\"100%\">";
     html_message += "<span class=\"username\" style=\"color: " + messageColor.name() + ";\">" + displayName;
 
@@ -243,6 +244,19 @@ MainWindow::parseLinks(QString &htmlContent)
     }
 
     return num_links;
+}
+
+void
+MainWindow::parseBttvEmotes(QString &htmlContent)
+{
+    for (auto emote_it : emote_manager.bttvEmotes) {
+        const BttvEmote &emote = emote_it;
+
+        int v = this->emote_manager.getBttvEmote(emote);
+
+        QString image_tag = QString("<img src=\"file:///%1%2%3.png?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
+        htmlContent.replace(emote.regex, image_tag);
+    }
 }
 
 void

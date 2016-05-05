@@ -34,6 +34,7 @@ public:
     void switchChat(QTextBrowser* chatEdit);
 
     int parseLinks(QString &htmlContent);
+    void parseBttvEmotes(QString &htmlContent);
 
 private slots:
     void on_wSend_clicked();
