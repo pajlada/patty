@@ -35,6 +35,7 @@ public:
 
     int parseLinks(QString &htmlContent);
     void parseBttvEmotes(QString &htmlContent);
+    void parseBttvChannelEmotes(QString &htmlContent, const QString &channel);
 
 private slots:
     void on_wSend_clicked();

@@ -191,7 +191,10 @@ MainWindow::onMessage(IrcPrivateMessage *message)
     } else {
         html_content = html_content.replace("<", "&lt;").replace(">", "&gt;");
     }
+
     this->parseBttvEmotes(html_content);
+    this->parseBttvChannelEmotes(html_content, message->target());
+
     QString html_message = "<td class=\"message\" width=\"100%\">";
     html_message += "<span class=\"username\" style=\"color: " + messageColor.name() + ";\">" + displayName;
 
@@ -260,6 +263,21 @@ MainWindow::parseBttvEmotes(QString &htmlContent)
 }
 
 void
+MainWindow::parseBttvChannelEmotes(QString &htmlContent, const QString &channel)
+{
+    if (this->emote_manager.bttvChannelEmotes.contains(channel)) {
+        for (auto emote_it : emote_manager.bttvChannelEmotes[channel]) {
+            const BttvEmote &emote = emote_it;
+
+            int v = 1;
+
+            QString image_tag = QString("<img src=\"file:///%1%2%3.png?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
+            htmlContent.replace(emote.regex, image_tag);
+        }
+    }
+}
+
+void
 MainWindow::onJoin(IrcJoinMessage *message)
 {
     if (!connected) {
@@ -268,6 +286,7 @@ MainWindow::onJoin(IrcJoinMessage *message)
         this->ui->cJoin->setEnabled(true);
         connected = false;
     }
+
     QListWidgetItem* item = new QListWidgetItem(message->channel(), this->ui->listview_channels, 0);
     this->ui->listview_channels->addItem(item);
 
@@ -279,6 +298,8 @@ MainWindow::onJoin(IrcJoinMessage *message)
     if (this->channelChats.size() == 0) {
         switchChat(chatTextEdit);
     }
+
+    this->emote_manager.getBttvChannelEmotes(message->channel());
 
     this->channelChats.insert(message->channel(), chatTextEdit);
 }

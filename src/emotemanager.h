@@ -24,13 +24,19 @@ class EmoteManager : public QObject
 
 public:
     EmoteManager();
+
     int get_twitch_emote(int emote_id);
     int getBttvEmote(const BttvEmote &emote);
+
+    int downloadBttvEmote(const BttvEmote &emote);
+
+    void getBttvChannelEmotes(const QString &channel);
 
     QMap<int, QImage> twitch_emotes;
     QMap<QString, QImage> bttvEmotesCache;
 
     QList<BttvEmote> bttvEmotes;
+    QMap<QString, QList<BttvEmote> > bttvChannelEmotes;
 
     QString emote_folder;
 

@@ -108,6 +108,56 @@ EmoteManager::getBttvEmote(const BttvEmote &emote)
     return 0;
 }
 
+int
+EmoteManager::downloadBttvEmote(const BttvEmote &emote)
+{
+    auto it = this->bttvEmotesCache.find(emote.hash);
+    if (it == this->bttvEmotesCache.end()) {
+        // The emote ID was not found in our cache
+        QString url = QString("https://cdn.betterttv.net/emote/%1/1x").arg(emote.hash);
+        this->getBaseEmote(url, &this->bttvEmotesCache, emote.hash);
+        return 1;
+    }
+
+    return 0;
+}
+
+void
+EmoteManager::getBttvChannelEmotes(const QString &channel)
+{
+    QUrl url = QUrl(QString("https://api.betterttv.net/2/channels/%1").arg(channel.right(channel.length() - 1)));
+    QNetworkRequest req(url);
+    QNetworkReply *reply = this->network_access_manager.get(req);
+
+    QList<BttvEmote> *list;
+
+    if (this->bttvChannelEmotes.contains(channel)) {
+        list = &this->bttvChannelEmotes[channel];
+    } else {
+        this->bttvChannelEmotes.value(channel, QList<BttvEmote>());
+        list = &this->bttvChannelEmotes[channel];
+    }
+
+    connect(reply,
+            &QNetworkReply::finished,
+            [=]() {
+        QByteArray data = reply->readAll();
+
+        QJsonDocument jsonDoc(QJsonDocument::fromJson(data));
+        QJsonObject root = jsonDoc.object();
+        QJsonArray emotesArray = root.value("emotes").toArray();
+        for (auto it : emotesArray) {
+            const QJsonObject &emote_obj = it.toObject();
+            BttvEmote emote(emote_obj.value("id").toString(), emote_obj.value("code").toString());
+            list->push_back(emote);
+        }
+
+        for (auto emote : *list) {
+            this->downloadBttvEmote(emote);
+        }
+    });
+}
+
 BttvEmote::BttvEmote(QString _hash, QString _code)
     : hash(_hash), code(_code)
 {
