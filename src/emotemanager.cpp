@@ -71,11 +71,10 @@ EmoteManager::getBaseEmote(QString url, QMap<QString, QImage> *emotes, QString e
             &QNetworkReply::finished,
             [=]() {
         QImage image;
-        image.loadFromData(reply->readAll());
-        if (image.isNull()) {
-            std::cerr << "bad image" << std::endl;
-        }
-        image.save(QString("%1%2%3.png").arg(this->emote_folder).arg(QDir::separator()).arg(emote_id));
+        QFile file(QString("%1%2%3.gif").arg(this->emote_folder).arg(QDir::separator()).arg(emote_id));
+        file.open(QIODevice::WriteOnly);
+        file.write(reply->readAll());
+        file.close();
         emotes->insert(emote_id, image);
         });
 }

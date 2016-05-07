@@ -24,12 +24,14 @@ IrcClient::connect()
     this->setRealName("Patty User");
 
     this->joinChannel("#pajlada");
+    /*
     this->joinChannel("#forsenlol");
     this->joinChannel("#mushisgosu");
     this->joinChannel("#trumpsc");
     this->joinChannel("#lirik");
     this->joinChannel("#tsm_dyrus");
     this->joinChannel("#sodapoppin");
+    */
 
     this->sendCommand(IrcCommand::createCapability("REQ", "twitch.tv/commands"));
     this->sendCommand(IrcCommand::createCapability("REQ", "twitch.tv/tags"));

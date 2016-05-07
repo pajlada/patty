@@ -22,12 +22,14 @@ SOURCES += src/main.cpp\
         src/mainwindow.cpp \
     src/ircclient.cpp \
     src/emotemanager.cpp \
-    src/loginwindow.cpp
+    src/loginwindow.cpp \
+    src/animatedtextbrowser.cpp
 
 HEADERS  += src/mainwindow.h \
     src/ircclient.h \
     src/emotemanager.h \
-    src/loginwindow.h
+    src/loginwindow.h \
+    src/animatedtextbrowser.h
 
 RESOURCES += lib/QDarkStyleSheet/qdarkstyle/style.qrc
 

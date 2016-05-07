@@ -77,7 +77,7 @@ MainWindow::MainWindow(QWidget *parent) :
                                  "background-color: rgba(255, 0, 0, .4) !important;"
                                  "}");
 
-    currentChat = this->ui->baseChatWindow;
+    currentChat = static_cast<AnimatedTextBrowser*>(this->ui->baseChatWindow);
     currentChat->document()->setDefaultStyleSheet(default_stylesheet);
 }
 
@@ -105,7 +105,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
         return;
     }
 
-    QTextBrowser* channelChat = *itr;
+    AnimatedTextBrowser* channelChat = *itr;
 
     QScrollBar *scrollbar = channelChat->verticalScrollBar();
     int cur_value = scrollbar->value();
@@ -227,6 +227,7 @@ MainWindow::onMessage(IrcPrivateMessage *message)
 int
 MainWindow::parseLinks(QString &htmlContent)
 {
+    return 0;
     int num_links = 0;
     int offset = 0;
 
@@ -257,7 +258,7 @@ MainWindow::parseBttvEmotes(QString &htmlContent)
 
         int v = this->emote_manager.getBttvEmote(emote);
 
-        QString image_tag = QString("<img src=\"file:///%1%2%3.png?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
+        QString image_tag = QString("<img src=\"file:///%1%2%3.gif?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
         htmlContent.replace(emote.regex, image_tag);
     }
 }
@@ -271,7 +272,9 @@ MainWindow::parseBttvChannelEmotes(QString &htmlContent, const QString &channel)
 
             int v = 1;
 
-            QString image_tag = QString("<img src=\"file:///%1%2%3.png?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
+            QString image_tag = QString("<img src=\"file:///%1%2%3.gif?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
+            //QString image_tag = QString("<img src=\"file:///D:/data/pictures/xdd.gif\"/>");
+            //QString image_tag = QString("<img src=\"http://pajlada.com/files/XDD.gif\"/>");
             htmlContent.replace(emote.regex, image_tag);
         }
     }
@@ -290,7 +293,8 @@ MainWindow::onJoin(IrcJoinMessage *message)
     QListWidgetItem* item = new QListWidgetItem(message->channel(), this->ui->listview_channels, 0);
     this->ui->listview_channels->addItem(item);
 
-    QTextBrowser* chatTextEdit = new QTextBrowser(this);
+    AnimatedTextBrowser* chatTextEdit = new AnimatedTextBrowser(this);
+    chatTextEdit->setAnimated(true);
     chatTextEdit->setReadOnly(true);
     chatTextEdit->setGeometry(this->ui->baseChatWindow->geometry());
     chatTextEdit->setOpenExternalLinks(true);
@@ -346,7 +350,7 @@ MainWindow::connectToIrc()
 }
 
 void
-MainWindow::switchChat(QTextBrowser *chatEdit)
+MainWindow::switchChat(AnimatedTextBrowser *chatEdit)
 {
     if (this->currentChat) {
         this->currentChat->hide();

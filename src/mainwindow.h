@@ -6,6 +6,7 @@
 #include <QString>
 #include <QTextBrowser>
 #include "emotemanager.h"
+#include "animatedtextbrowser.h"
 #include <QRegularExpression>
 
 namespace Ui {
@@ -31,7 +32,7 @@ public:
     void removeChannel(QListWidgetItem *item);
     void channelChanged();
 
-    void switchChat(QTextBrowser* chatEdit);
+    void switchChat(AnimatedTextBrowser* chatEdit);
 
     int parseLinks(QString &htmlContent);
     void parseBttvEmotes(QString &htmlContent);
@@ -48,8 +49,8 @@ private:
 
     QRegularExpression url_regex;
 
-    QTextBrowser* currentChat;
-    QMap<QString, QTextBrowser*> channelChats;
+    AnimatedTextBrowser* currentChat;
+    QMap<QString, AnimatedTextBrowser*> channelChats;
     QList<QRegExp> mentions;
 };
 
