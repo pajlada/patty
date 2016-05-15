@@ -66,3 +66,11 @@ IrcClient::joinChannel(const QString& channelName)
 
     return false;
 }
+
+QList<PattyIrcMessage *> *IrcClient::getMessages(const QString& channelName) {
+    if (!this->messages.contains(channelName)) {
+        this->messages.insert(channelName, QList<PattyIrcMessage *>());
+    }
+    QList<PattyIrcMessage *>* messages = &this->messages[channelName];
+    return messages;
+}

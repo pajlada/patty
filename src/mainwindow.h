@@ -1,12 +1,14 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "emotemanager.h"
+#include "pattyircmessage.h"
+#include "animatedtextbrowser.h"
+
 #include <QMainWindow>
 #include <QMap>
 #include <QString>
 #include <QTextBrowser>
-#include "emotemanager.h"
-#include "animatedtextbrowser.h"
 #include <QRegularExpression>
 
 namespace Ui {
@@ -28,15 +30,10 @@ public:
     void connectToIrc();
 
     void onMessage(IrcPrivateMessage *message);
+    void addMessage(PattyIrcMessage *message);
     void onJoin(IrcJoinMessage *message);
     void removeChannel(QListWidgetItem *item);
     void channelChanged();
-
-    void switchChat(AnimatedTextBrowser* chatEdit);
-
-    int parseLinks(QString &htmlContent);
-    void parseBttvEmotes(QString &htmlContent);
-    void parseBttvChannelEmotes(QString &htmlContent, const QString &channel);
 
 private slots:
     void on_wSend_clicked();
@@ -45,13 +42,10 @@ private slots:
 private:
     Ui::MainWindow *ui;
 
-    EmoteManager emote_manager;
+    QRegularExpression message_regex;
 
-    QRegularExpression url_regex;
-
-    AnimatedTextBrowser* currentChat;
-    QMap<QString, AnimatedTextBrowser*> channelChats;
-    QList<QRegExp> mentions;
+    QString currentChannel;
+    int currentMessages;
 };
 
 #endif // MAINWINDOW_H

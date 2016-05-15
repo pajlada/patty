@@ -87,7 +87,7 @@
       <widget class="QWidget" name="verticalLayoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
-         <widget class="QTextBrowser" name="baseChatWindow">
+         <widget class="AnimatedTextBrowser" name="baseChatWindow">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
             <horstretch>0</horstretch>

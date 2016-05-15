@@ -12,7 +12,7 @@
 class AnimatedTextBrowser :
     public QTextBrowser
 {
-    Q_OBJECT;
+    Q_OBJECT
 public:
     AnimatedTextBrowser(QWidget *AParent = NULL);
     bool isAnimated() const;

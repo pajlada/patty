@@ -15,6 +15,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 TARGET = patty
 TEMPLATE = app
 
+INCLUDEPATH += src/
+
 include(lib/libcommuni/src/src.pri)
 
 
@@ -23,13 +25,16 @@ SOURCES += src/main.cpp\
     src/ircclient.cpp \
     src/emotemanager.cpp \
     src/loginwindow.cpp \
-    src/animatedtextbrowser.cpp
+    src/animatedtextbrowser.cpp \
+    src/pattyircmessage.cpp
 
 HEADERS  += src/mainwindow.h \
     src/ircclient.h \
     src/emotemanager.h \
     src/loginwindow.h \
-    src/animatedtextbrowser.h
+    src/animatedtextbrowser.h \
+    src/pattyircmessage.h \
+    src/mentionmanager.h
 
 RESOURCES += lib/QDarkStyleSheet/qdarkstyle/style.qrc
 

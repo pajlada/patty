@@ -18,12 +18,12 @@ bool connected = false;
 
 QString default_stylesheet;
 
-#define URL_REGEX "((?:https?|ftp)://\\S+)"
+#define MESSAGE_REGEX "(<table[^>]*>.+?<\\/table>)"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow),
-    url_regex(URL_REGEX, QRegularExpression::CaseInsensitiveOption)
+    message_regex(MESSAGE_REGEX, QRegularExpression::CaseInsensitiveOption | QRegularExpression::DotMatchesEverythingOption)
 {
     ui->setupUi(this);
 
@@ -77,235 +77,79 @@ MainWindow::MainWindow(QWidget *parent) :
                                  "background-color: rgba(255, 0, 0, .4) !important;"
                                  "}");
 
-    currentChat = static_cast<AnimatedTextBrowser*>(this->ui->baseChatWindow);
-    currentChat->document()->setDefaultStyleSheet(default_stylesheet);
+    this->ui->baseChatWindow->document()->setDefaultStyleSheet(default_stylesheet);
+    this->ui->baseChatWindow->setAnimated(true);
+    currentMessages = 0;
 }
 
-struct EmoteReplacement
-{
-    int index;
-    int length;
-    QString tag;
-};
+void MainWindow::onMessage(IrcPrivateMessage *message) {
+    auto messages = read.getMessages(message->target());
+    PattyIrcMessage* pattyMsg = PattyIrcMessage::fromMessage(message);
+    messages->append(pattyMsg);
 
-bool
-variantByIndex(const struct EmoteReplacement &v1,
-               const struct EmoteReplacement &v2)
-{
-    return v1.index < v2.index;
-}
-
-void
-MainWindow::onMessage(IrcPrivateMessage *message)
-{
-    auto itr = this->channelChats.find(message->target());
-    if (itr == this->channelChats.end())
-    {
-        // @todo: Private messages are going to have the nickname in target() probably.
-        return;
-    }
-
-    AnimatedTextBrowser* channelChat = *itr;
-
-    QScrollBar *scrollbar = channelChat->verticalScrollBar();
+    QScrollBar *scrollbar = this->ui->baseChatWindow->verticalScrollBar();
     int cur_value = scrollbar->value();
     int max_value = scrollbar->maximum();
 
-    QString displayName = message->tags()["display-name"].toString();
-    if (displayName.length() == 0) {
-        displayName = message->nick();
-    }
-    QString colorString = message->tags()["color"].toString();
-    QString emotesString = message->tags()["emotes"].toString();
-    QColor messageColor;
-    if (colorString.length() == 0) {
-        messageColor = QColor("#aa6633");
-    } else {
-        messageColor = QColor(message->tags()["color"].toString());
-    }
+    if (messages->count() > 150) { // Subject to change via settings, currently set as twitch default
+        messages->removeAt(0);
+        if (message->target() == this->currentChannel && cur_value == max_value) { // bttv behaviour
+            QString html = this->ui->baseChatWindow->toHtml();
+            QRegularExpressionMatchIterator it = this->message_regex.globalMatch(this->ui->baseChatWindow->toHtml());
+            while (it.hasNext() && this->currentMessages > 150) {
+                QRegularExpressionMatch match = it.next();
+                html.replace(match.capturedStart(1), match.capturedLength(1), "");
+                this->currentMessages -= 1;
 
-    QTextCursor prev_cursor = channelChat->textCursor();
-    channelChat->moveCursor(QTextCursor::End);
+            }
+            this->ui->baseChatWindow->setHtml(html);
 
-    const QString &content = message->content();
-    QString html_content(content);
-
-    if (emotesString.length() > 0) {
-        QStringList unique_emotes = emotesString.split('/');
-        QList<struct EmoteReplacement> replacements;
-        for (auto unique_emote : unique_emotes) {
-            int emote_id = unique_emote.section(':', 0, 0).toInt();
-            int v = emote_manager.get_twitch_emote(emote_id);
-            QStringList emote_occurences = unique_emote.section(':', 1, 1).split(',');
-            for (auto emote_occurence : emote_occurences) {
-                int begin = emote_occurence.section('-', 0, 0).toInt();
-                int end = emote_occurence.section('-', 1, 1).toInt();
-                QString image_tag = QString("<img src=\"file:///%1%2%3.png?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote_id).arg(v);
-                replacements.append(EmoteReplacement {
-                                        begin,
-                                        end - begin + 1,
-                                        image_tag
-                                    });
+            if (cur_value == max_value) {
+                // Scroll to the bottom if the user has not scrolled up
+                scrollbar->setValue(scrollbar->maximum());
+            } else {
+                scrollbar->setValue(cur_value);
             }
         }
-        int offset = 0;
-        qSort(replacements.begin(), replacements.end(), variantByIndex);
-        int last_i = 0;
-        for (auto replacement : replacements) {
-            /* Figure out if we need to increase the offset due to
-               unicode characters. */
-            for (int i=last_i+offset; i < replacement.index + offset; ++i) {
-                const QChar &c = html_content[i];
-                if (c.isHighSurrogate()) {
-                    // qDebug() << "offset += 1 due to high surrogate";
-                    offset += 1;
-                }
-                // ANTI-PAJLADA-TRIGGER ACTIVATE BEEP BOOP
-                if (c == '>' || c == '<') {
-                    offset += 3;
-                }
-                if (c == '>') {
-                    html_content = html_content.replace(i, 1, "&gt;");
-                }
-                if (c == '<') {
-                    html_content = html_content.replace(i, 1, "&lt;");
-                }
-            }
-            last_i = replacement.index + replacement.length;
-            html_content = html_content.replace(replacement.index + offset,
-                                 replacement.length,
-                                 replacement.tag);
-
-            offset += replacement.tag.length() - replacement.length;
-        }
-        for (int i = last_i+offset; i < html_content.length(); ++i) {
-            const QChar &c = html_content[i];
-            // ANTI-PAJLADA-TRIGGER ACTIVATE BEEP BOOP
-            if (c == '>') {
-                html_content = html_content.replace(i, 1, "&gt;");
-            }
-            if (c == '<') {
-                html_content = html_content.replace(i, 1, "&lt;");
-            }
-        }
-    } else {
-        html_content = html_content.replace("<", "&lt;").replace(">", "&gt;");
     }
-
-    this->parseBttvEmotes(html_content);
-    this->parseBttvChannelEmotes(html_content, message->target());
-
-    QString html_message = "<td class=\"message\" width=\"100%\">";
-    html_message += "<span class=\"username\" style=\"color: " + messageColor.name() + ";\">" + displayName;
-
-    if (!message->isAction()) html_message += "</span>:";
-
-    this->parseLinks(html_content);
-    html_message += " " + html_content;
-    for (int i = 0; i < this->mentions.count(); ++i) {
-        auto mention = this->mentions.at(i);
-        if (mention.indexIn(content) >= 0) {
-            html_message = "<div class=\"mention\">" + html_message;
-            html_message += "</div>";
-        }
-    }
-    if (message->isAction()) html_message += "</span>";
-    html_message += "</td>";
-
-    channelChat->insertHtml(html_message);
-
-    channelChat->setTextCursor(prev_cursor);
-
-    if (cur_value == max_value) {
-        // Scroll to the bottom if the user has not scrolled up
-        scrollbar->setValue(scrollbar->maximum());
-    } else {
-        scrollbar->setValue(cur_value);
+    if (message->target() == this->currentChannel) {
+        this->addMessage(pattyMsg);
     }
 }
 
-int
-MainWindow::parseLinks(QString &htmlContent)
-{
-    return 0;
-    int num_links = 0;
-    int offset = 0;
-
-    QRegularExpressionMatchIterator it = this->url_regex.globalMatch(htmlContent);
-
-    while (it.hasNext()) {
-        QRegularExpressionMatch match = it.next();
-
-        num_links += 1;
-
-        QString url = match.captured(1);
-        // We're adding an extra space here to make sure links don't carry over to the next line
-        QString new_url = QString("<a href=\"%1\">%1</a> ").arg(url);
-        htmlContent.replace(match.capturedStart(1) + offset, match.capturedLength(1), new_url);
-        // 15 is the amount of extra characters added by the new html tags
-        // 1 is the extra space
-        offset += url.length() + 15 + 1;
-    }
-
-    return num_links;
-}
-
-void
-MainWindow::parseBttvEmotes(QString &htmlContent)
-{
-    for (auto emote_it : emote_manager.bttvEmotes) {
-        const BttvEmote &emote = emote_it;
-
-        int v = this->emote_manager.getBttvEmote(emote);
-
-        QString image_tag = QString("<img src=\"file:///%1%2%3.gif?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
-        htmlContent.replace(emote.regex, image_tag);
-    }
-}
-
-void
-MainWindow::parseBttvChannelEmotes(QString &htmlContent, const QString &channel)
-{
-    if (this->emote_manager.bttvChannelEmotes.contains(channel)) {
-        for (auto emote_it : emote_manager.bttvChannelEmotes[channel]) {
-            const BttvEmote &emote = emote_it;
-
-            int v = 1;
-
-            QString image_tag = QString("<img src=\"file:///%1%2%3.gif?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
-            //QString image_tag = QString("<img src=\"file:///D:/data/pictures/xdd.gif\"/>");
-            //QString image_tag = QString("<img src=\"http://pajlada.com/files/XDD.gif\"/>");
-            htmlContent.replace(emote.regex, image_tag);
-        }
-    }
+void MainWindow::addMessage(PattyIrcMessage *message) {
+   QScrollBar *scrollbar = this->ui->baseChatWindow->verticalScrollBar();
+   int cur_value = scrollbar->value();
+   int max_value = scrollbar->maximum();
+   QTextCursor prev_cursor = this->ui->baseChatWindow->textCursor();
+   this->ui->baseChatWindow->moveCursor(QTextCursor::End);
+   this->ui->baseChatWindow->insertHtml(message->message);
+   this->currentMessages += 1;
+   qDebug() << this->currentMessages;
+   this->ui->baseChatWindow->setTextCursor(prev_cursor);
+   if (cur_value == max_value) {
+       // Scroll to the bottom if the user has not scrolled up
+       scrollbar->setValue(scrollbar->maximum());
+   } else {
+       scrollbar->setValue(cur_value);
+   }
 }
 
 void
 MainWindow::onJoin(IrcJoinMessage *message)
 {
-    if (!connected) {
-        this->setWindowTitle("Connected");
-        this->ui->cInput->setEnabled(true);
-        this->ui->cJoin->setEnabled(true);
-        connected = false;
-    }
 
     QListWidgetItem* item = new QListWidgetItem(message->channel(), this->ui->listview_channels, 0);
     this->ui->listview_channels->addItem(item);
 
-    AnimatedTextBrowser* chatTextEdit = new AnimatedTextBrowser(this);
-    chatTextEdit->setAnimated(true);
-    chatTextEdit->setReadOnly(true);
-    chatTextEdit->setGeometry(this->ui->baseChatWindow->geometry());
-    chatTextEdit->setOpenExternalLinks(true);
-    chatTextEdit->document()->setDefaultStyleSheet(default_stylesheet);
-    if (this->channelChats.size() == 0) {
-        switchChat(chatTextEdit);
+    if (!connected) {
+        connected = true;
+        this->setWindowTitle("Connected");
+        this->ui->cInput->setEnabled(true);
+        this->ui->cJoin->setEnabled(true);
+        this->currentChannel = message->channel();
     }
-
-    this->emote_manager.getBttvChannelEmotes(message->channel());
-
-    this->channelChats.insert(message->channel(), chatTextEdit);
+    PattyIrcMessage::emote_manager.getBttvChannelEmotes(message->channel());
 }
 
 void
@@ -314,14 +158,13 @@ MainWindow::removeChannel(QListWidgetItem *item)
     IrcCommand* part = IrcCommand::createPart(item->text());
     write.sendCommand(part);
     read.sendCommand(part);
+    delete item;
+
     if (this->ui->listview_channels->count() == 0) {
         this->ui->wChannel->setText("");
         this->ui->wInput->setEnabled(false);
         this->ui->wSend->setEnabled(false);
     }
-
-    this->channelChats.remove(item->text());
-    delete item;
 }
 
 void
@@ -329,13 +172,16 @@ MainWindow::channelChanged()
 {
     QListWidgetItem* item = this->ui->listview_channels->currentItem();
     if (item) {
+        this->currentChannel = item->text();
         this->ui->wChannel->setText(item->text());
         this->ui->wInput->setEnabled(true);
         this->ui->wSend->setEnabled(true);
 
-        auto itr = this->channelChats.find(item->text());
-        if (itr != this->channelChats.end()) {
-            switchChat(*itr);
+        this->ui->baseChatWindow->clear();
+        auto messages = read.getMessages(item->text());
+        this->currentMessages = 0;
+        for (int i = 0; i < messages->length(); i++) {
+            this->addMessage(messages->at(i));
         }
     }
 }
@@ -345,25 +191,11 @@ MainWindow::connectToIrc()
 {
     read.connect();
     write.connect();
+
     // Default mention added for now, until something like loadable mentions or etc. is added
-    this->mentions.append(QRegExp("\\b@?" + QRegExp::escape(write.nickName()) + "\\b", Qt::CaseInsensitive));
-}
-
-void
-MainWindow::switchChat(AnimatedTextBrowser *chatEdit)
-{
-    if (this->currentChat) {
-        this->currentChat->hide();
-        /*
-        chatEdit->setGeometry(this->currentChat->geometry());
-        chatEdit->setSizePolicy(this->currentChat->sizePolicy());
-        */
-        this->ui->verticalLayout->removeWidget(this->currentChat);
-    }
-
-    this->ui->verticalLayout->insertWidget(0, chatEdit);
-    this->currentChat = chatEdit;
-    this->currentChat->show();
+    PattyIrcMention* default_mention = new PattyIrcMention();
+    default_mention->regex = QRegExp("\\b@?" + QRegExp::escape(write.nickName()) + "\\b", Qt::CaseInsensitive);
+    PattyIrcMessage::mention_manager.mentions.append(default_mention);
 }
 
 MainWindow::~MainWindow()
@@ -387,7 +219,7 @@ void MainWindow::on_cJoin_clicked()
     if (list.length() > 0) {
         return;
     }
-    IrcCommand* join = IrcCommand::createJoin(channel);
+    IrcCommand* join = IrcCommand::createJoin(channel.toLower());
     write.sendCommand(join);
     read.sendCommand(join);
     this->ui->cInput->clear();
