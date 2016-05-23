@@ -11,6 +11,8 @@
 #include <QTextDocumentFragment>
 #include <QDebug>
 #include <QDir>
+#include <QWebElement>
+#include <QDesktopServices>
 
 IrcClient read;
 IrcClient write;
@@ -57,6 +59,11 @@ MainWindow::MainWindow(QWidget *parent) :
                      this->ui->cJoin,
                      &QPushButton::click);
 
+    QObject::connect(this->ui->baseChatWindow->page()->mainFrame(),
+                     &QWebFrame::contentsSizeChanged,
+                     this,
+                     &MainWindow::chatContentsSizeChanged);
+
     this->ui->splitter->setStretchFactor(0, 0);
     this->ui->splitter->setStretchFactor(1, 1);
 
@@ -67,72 +74,66 @@ MainWindow::MainWindow(QWidget *parent) :
     this->ui->wInput->setEnabled(false);
     this->ui->wSend->setEnabled(false);
 
-    default_stylesheet = QString("a {"
-                                 "color: #f0f;"
-                                 "}"
-                                 ".username {"
-                                 "font-weight: bold;"
-                                 "}"
-                                 ".mention td {"
-                                 "background-color: rgba(255, 0, 0, .4) !important;"
-                                 "}");
+    this->ui->baseChatWindow->settings()->setUserStyleSheetUrl(QUrl("qrc:/patty/main.css"));
+    this->ui->baseChatWindow->page()->setLinkDelegationPolicy(QWebPage::DelegateAllLinks);//Handle link clicks by yourself
+    this->ui->baseChatWindow->setContextMenuPolicy(Qt::NoContextMenu);
 
-    this->ui->baseChatWindow->document()->setDefaultStyleSheet(default_stylesheet);
-    this->ui->baseChatWindow->setAnimated(true);
-    currentMessages = 0;
+    QObject::connect(this->ui->baseChatWindow,
+                     &QWebView::linkClicked,
+                     this,
+                     &MainWindow::linkClicked);
+
+    PattyIrcMessage::emote_manager.getTwitchEmotes();
+    PattyIrcMessage::emote_manager.getBttvEmotes();
+    PattyIrcMessage::emote_manager.getFfzEmotes();
 }
 
 void MainWindow::onMessage(IrcPrivateMessage *message) {
     auto messages = read.getMessages(message->target());
+    int messageCount = 150; // Subject to change via settings, currently set as twitch default
     PattyIrcMessage* pattyMsg = PattyIrcMessage::fromMessage(message);
     messages->append(pattyMsg);
 
-    QScrollBar *scrollbar = this->ui->baseChatWindow->verticalScrollBar();
-    int cur_value = scrollbar->value();
-    int max_value = scrollbar->maximum();
-
-    if (messages->count() > 150) { // Subject to change via settings, currently set as twitch default
-        messages->removeAt(0);
-        if (message->target() == this->currentChannel && cur_value == max_value) { // bttv behaviour
-            QString html = this->ui->baseChatWindow->toHtml();
-            QRegularExpressionMatchIterator it = this->message_regex.globalMatch(this->ui->baseChatWindow->toHtml());
-            while (it.hasNext() && this->currentMessages > 150) {
-                QRegularExpressionMatch match = it.next();
-                html.replace(match.capturedStart(1), match.capturedLength(1), "");
-                this->currentMessages -= 1;
-
-            }
-            this->ui->baseChatWindow->setHtml(html);
-
-            if (cur_value == max_value) {
-                // Scroll to the bottom if the user has not scrolled up
-                scrollbar->setValue(scrollbar->maximum());
-            } else {
-                scrollbar->setValue(cur_value);
+    if (message->target() == this->currentChannel) {
+        QString html;
+        QWebFrame* frame = this->ui->baseChatWindow->page()->mainFrame();
+        this->scrollValue = frame->scrollBarValue(Qt::Vertical);
+        this->autoScroll = (this->scrollValue >= frame->scrollBarMaximum(Qt::Vertical));
+        if (this->autoScroll) {
+            while (messages->count() > messageCount) {
+                delete messages->takeFirst();
+                QWebElement message = frame->findFirstElement("div.message");
+                message.removeFromDocument();
             }
         }
-    }
-    if (message->target() == this->currentChannel) {
-        this->addMessage(pattyMsg);
+        addMessage(pattyMsg);
+    } else {
+        if (messages->count() > messageCount) {
+            delete messages->takeFirst();
+        }
     }
 }
 
-void MainWindow::addMessage(PattyIrcMessage *message) {
-   QScrollBar *scrollbar = this->ui->baseChatWindow->verticalScrollBar();
-   int cur_value = scrollbar->value();
-   int max_value = scrollbar->maximum();
-   QTextCursor prev_cursor = this->ui->baseChatWindow->textCursor();
-   this->ui->baseChatWindow->moveCursor(QTextCursor::End);
-   this->ui->baseChatWindow->insertHtml(message->message);
-   this->currentMessages += 1;
-   qDebug() << this->currentMessages;
-   this->ui->baseChatWindow->setTextCursor(prev_cursor);
-   if (cur_value == max_value) {
-       // Scroll to the bottom if the user has not scrolled up
-       scrollbar->setValue(scrollbar->maximum());
-   } else {
-       scrollbar->setValue(cur_value);
-   }
+void
+MainWindow::addMessage(PattyIrcMessage *message) {
+    QWebElement pageBody = this->ui->baseChatWindow->page()->mainFrame()->documentElement().findFirst("body");
+    pageBody.appendInside(message->message);
+}
+
+void
+MainWindow::chatContentsSizeChanged(const QSize &size) {
+    // webkit is dumb ok
+    QWebFrame* frame = this->ui->baseChatWindow->page()->mainFrame();
+    if (this->autoScroll) {
+        frame->setScrollBarValue(Qt::Vertical, size.height());
+    } else {
+        frame->setScrollBarValue(Qt::Vertical, this->scrollValue);
+    }
+}
+
+void
+MainWindow::linkClicked(const QUrl &url) {
+    QDesktopServices::openUrl(url);
 }
 
 void
@@ -177,12 +178,17 @@ MainWindow::channelChanged()
         this->ui->wInput->setEnabled(true);
         this->ui->wSend->setEnabled(true);
 
-        this->ui->baseChatWindow->clear();
         auto messages = read.getMessages(item->text());
-        this->currentMessages = 0;
-        for (int i = 0; i < messages->length(); i++) {
-            this->addMessage(messages->at(i));
+
+        QString html;
+        QWebFrame* frame = this->ui->baseChatWindow->page()->mainFrame();
+        frame->setHtml("");
+        for (int i = 0; i < messages->count(); ++i) {
+            auto message = messages->at(i);
+            addMessage(message);
         }
+        this->scrollValue = 0;
+        this->autoScroll = true;
     }
 }
 
@@ -195,6 +201,7 @@ MainWindow::connectToIrc()
     // Default mention added for now, until something like loadable mentions or etc. is added
     PattyIrcMention* default_mention = new PattyIrcMention();
     default_mention->regex = QRegExp("\\b@?" + QRegExp::escape(write.nickName()) + "\\b", Qt::CaseInsensitive);
+    default_mention->cssclass = "default";
     PattyIrcMessage::mention_manager.mentions.append(default_mention);
 }
 

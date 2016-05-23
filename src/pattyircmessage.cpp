@@ -1,6 +1,8 @@
 #include "pattyircmessage.h"
+#include <QEventLoop>
+#include <QWebFrame>
 
-#define URL_REGEX "((?:https?|ftp)://\\S+)"
+#define URL_REGEX "(?<![^ ])((?:https?|ftp)://\\S+)(?![^ ])"
 
 QRegularExpression url_regex = QRegularExpression(URL_REGEX);
 
@@ -30,76 +32,43 @@ PattyIrcMessage* PattyIrcMessage::fromMessage(IrcPrivateMessage* message) {
     QString html_content = message->content();
 
     if (emotesString.length() > 0) {
-        QStringList unique_emotes = emotesString.split('/');
-        QList<struct EmoteReplacement> replacements;
-        for (auto unique_emote : unique_emotes) {
-            int emote_id = unique_emote.section(':', 0, 0).toInt();
-            int v = emote_manager.get_twitch_emote(emote_id);
-            QStringList emote_occurences = unique_emote.section(':', 1, 1).split(',');
-            for (auto emote_occurence : emote_occurences) {
-                int begin = emote_occurence.section('-', 0, 0).toInt();
-                int end = emote_occurence.section('-', 1, 1).toInt();
-                QString image_tag = QString("<img src=\"file:///%1%2%3.png?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote_id).arg(v);
-                replacements.append(EmoteReplacement {
-                                        begin,
-                                        end - begin + 1,
-                                        image_tag
-                                    });
-            }
-        }
-        int offset = 0;
-        qSort(replacements.begin(), replacements.end(), variantByIndex);
-        int last_i = 0;
-        for (auto replacement : replacements) {
-            /* Figure out if we need to increase the offset due to
-               unicode characters and HTML tag escapes. */
-            for (int i=last_i+offset; i < replacement.index + offset; ++i) {
-                const QChar &c = html_content[i];
-                if (c.isHighSurrogate()) {
-                    offset += 1;
-                }
-                if (c == '>' || c == '<') offset += 3; // sorry pajlada i cannot look at it otherwise
-                if (c == '>') html_content = html_content.replace(i, 1, "&gt;");
-                if (c == '<') html_content = html_content.replace(i, 1, "&lt;");
-            }
-            last_i = replacement.index + replacement.length;
-            html_content = html_content.replace(replacement.index + offset,
-                                 replacement.length,
-                                 replacement.tag);
-
-            offset += replacement.tag.length() - replacement.length;
-        }
-        for (int i = last_i+offset; i < html_content.length(); ++i) {
-            const QChar &c = html_content[i];
-            if (c == '>') html_content = html_content.replace(i, 1, "&gt;");
-            if (c == '<') html_content = html_content.replace(i, 1, "&lt;");
-        }
+        parseTwitchEmotes(html_content, emotesString);
     } else {
         html_content = html_content.replace("<", "&lt;").replace(">", "&gt;");
     }
 
-    parseBttvEmotes(html_content);
-    parseBttvChannelEmotes(html_content, message->target());
+    parseBTTVEmotes(html_content);
+    parseBTTVEmotes(html_content, message->target());
+    parseFFZEmotes(html_content);
     parseLinks(html_content);
 
-    QString html_message = "<td class=\"message\" width=\"100%\">";
-    html_message += "<span class=\"username\" style=\"color: " + msg->username_color.name() + ";\">" + msg->username;
-
-    if (!message->isAction()) html_message += "</span>:";
-
-    html_message += " " + html_content;
-
-    if (message->isAction()) html_message += "</span>";
-    html_message += "</td>";
+    QString mentionClass;
 
     for (int i = 0; i < mention_manager.mentions.count(); ++i) { // subject to change for the future
         PattyIrcMention* mention = mention_manager.mentions.at(i);
         if (mention->regex.indexIn(message->content()) >= 0) {
-            html_message = "<div class=\"mention\">" + html_message;
-            html_message += "</div>";
+            mentionClass = QString("data-mention=\"%1\"").arg(mention->cssclass);
             break;
         }
     }
+
+    QString html_message = QString("<div class=\"message%3\" data-emotes=\"%2\" %1>").arg(mentionClass).arg(emotesString);
+    QString content = QString("<span class=\"content\" %2>%1</span>").arg(html_content);
+    if (message->isAction()) {
+        html_message = html_message.arg(" action");
+        content = content.arg(QString("style=\"color: %1\"").arg(msg->username_color.name()));
+    } else {
+        html_message = html_message.arg("");
+        content = content.arg("");
+    }
+    html_message.append(QString("<span class=\"username\" style=\"color: %1;\">%2</span>").arg(msg->username_color.name(), msg->username));
+
+    html_message.append("<span class=\"colon\">:</span>");
+
+    html_message.append(content);
+
+    html_message.append("</div>");
+
 
     msg->message = html_message;
 
@@ -130,36 +99,80 @@ int PattyIrcMessage::parseLinks(QString &htmlContent)
         // We're adding an extra space here to make sure links don't carry over to the next line
         QString new_url = QString("<a href=\"%1\">%1</a> ").arg(url);
         htmlContent.replace(match.capturedStart(1) + offset, match.capturedLength(1), new_url);
-        // 15 is the amount of extra characters added by the new html tags
-        // 1 is the extra space
         offset += url.length() + 15 + 1;
     }
 
     return num_links;
 }
 
-void PattyIrcMessage::parseBttvEmotes(QString &htmlContent)
-{
-    for (auto emote_it : emote_manager.bttvEmotes) {
-        const BttvEmote &emote = emote_it;
+void PattyIrcMessage::parseTwitchEmotes(QString &message, QString &emotesString) {
+    QStringList unique_emotes = emotesString.split('/');
+    QList<struct EmoteReplacement> replacements;
+    for (auto unique_emote : unique_emotes) {
+        int emote_id = unique_emote.section(':', 0, 0).toInt();
+        QStringList emote_occurences = unique_emote.section(':', 1, 1).split(',');
+        for (auto emote_occurence : emote_occurences) {
+            int begin = emote_occurence.section('-', 0, 0).toInt();
+            int end = emote_occurence.section('-', 1, 1).toInt();
+            QString image_tag = QString("<img src=\"http://static-cdn.jtvnw.net/emoticons/v1/%1/1.0\" alt=\"%2\"/>").arg(emote_id).arg(emote_manager.emote_ids[emote_id]);
+            replacements.append(EmoteReplacement { begin, end - begin + 1, image_tag });
+        }
+    }
+    int offset = 0;
+    qSort(replacements.begin(), replacements.end(), variantByIndex);
+    int last_i = 0;
+    for (auto replacement : replacements) {
+        /* Figure out if we need to increase the offset due to
+           unicode characters and HTML tag escapes. */
+        for (int i=last_i+offset; i < replacement.index + offset; ++i) {
+            const QChar &c = message[i];
+            if (c.isHighSurrogate()) {
+                offset += 1;
+            }
+            if (c == '>' || c == '<') offset += 3; // sorry pajlada i cannot look at it otherwise
+            if (c == '>') message = message.replace(i, 1, "&gt;");
+            if (c == '<') message = message.replace(i, 1, "&lt;");
+        }
+        last_i = replacement.index + replacement.length;
+        message = message.replace(replacement.index + offset, replacement.length, replacement.tag);
 
-        int v = emote_manager.getBttvEmote(emote);
-
-        QString image_tag = QString("<img src=\"file:///%1%2%3.gif?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
-        htmlContent.replace(emote.regex, image_tag);
+        offset += replacement.tag.length() - replacement.length;
+    }
+    for (int i = last_i+offset; i < message.length(); ++i) {
+        const QChar &c = message[i];
+        if (c == '>') message = message.replace(i, 1, "&gt;");
+        if (c == '<') message = message.replace(i, 1, "&lt;");
     }
 }
 
-void PattyIrcMessage::parseBttvChannelEmotes(QString &htmlContent, const QString &channel)
-{
+void PattyIrcMessage::parseBTTVEmotes(QString &message) {
+    for (BttvEmote it : emote_manager.bttvEmotes) {
+        QString image = QString("<img src=\"https://cdn.betterttv.net/emote/%1/1x\" alt=\"%2\"/>").arg(it.hash).arg(it.code);
+        message.replace(it.regex, image);
+    }
+}
+
+void PattyIrcMessage::parseBTTVEmotes(QString &message, const QString &channel) {
     if (emote_manager.bttvChannelEmotes.contains(channel)) {
-        for (auto emote_it : emote_manager.bttvChannelEmotes[channel]) {
-            const BttvEmote &emote = emote_it;
+        for (BttvEmote it : emote_manager.bttvChannelEmotes[channel]) {
+            QString image = QString("<img src=\"https://cdn.betterttv.net/emote/%1/1x\" alt=\"%2\"/>").arg(it.hash, it.code);
+            message.replace(it.regex, image);
+        }
+    }
+}
 
-            int v = 1;
+void PattyIrcMessage::parseFFZEmotes(QString &message) {
+    for (FfzEmote it : emote_manager.ffzEmotes) {
+        QString image = QString("<img src=\"https://cdn.frankerfacez.com/emoticon/%1/1\" alt=\"%2\"/>").arg(it.id).arg(it.code);
+        message.replace(it.regex, image);
+    }
+}
 
-            QString image_tag = QString("<img src=\"file:///%1%2%3.gif?v=%4\"/>").arg(emote_manager.emote_folder).arg(QDir::separator()).arg(emote.hash).arg(v);
-            htmlContent.replace(emote.regex, image_tag);
+void PattyIrcMessage::parseFFZEmotes(QString &message, const QString &channel) {
+    if (emote_manager.ffzChannelEmotes.contains(channel)) {
+        for (FfzEmote it : emote_manager.ffzChannelEmotes[channel]) {
+            QString image = QString("<img src=\"https://cdn.frankerfacez.com/emoticon/%1/1\" alt=\"%2\"/>").arg(it.id).arg(it.code);
+            message.replace(it.regex, image);
         }
     }
 }

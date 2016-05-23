@@ -8,7 +8,8 @@
 struct PattyIrcMention {
     QRegExp regex; // regex of mention
     QString channel; // channel where mention should popup, empty for same channel
-    QString username; // trigger only if sent by certain username, empty for any
+    QList<QString> usernames; // trigger only if sent by certain username, empty for any
+    QString cssclass;
 };
 
 class MentionManager {

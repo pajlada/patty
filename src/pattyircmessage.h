@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QStringList>
 #include <QList>
+#include <QWebElement>
 
 #ifndef PATTYIRCMESSAGE_H
 #define PATTYIRCMESSAGE_H
@@ -38,10 +39,12 @@ public:
 
     static PattyIrcMessage* fromMessage(IrcPrivateMessage* message);
     static bool variantByIndex(const struct EmoteReplacement &v1, const struct EmoteReplacement &v2);
-
     static int parseLinks(QString &htmlContent);
-    static void parseBttvEmotes(QString &htmlContent);
-    static void parseBttvChannelEmotes(QString &htmlContent, const QString &channel);
+    static void parseTwitchEmotes(QString &message, QString &emotesString);
+    static void parseBTTVEmotes(QString &message);
+    static void parseBTTVEmotes(QString &message, const QString &channel);
+    static void parseFFZEmotes(QString &message);
+    static void parseFFZEmotes(QString &message, const QString &channel);
 
     static EmoteManager emote_manager;
     static MentionManager mention_manager;

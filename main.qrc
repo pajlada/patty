@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/patty">
+        <file>main.css</file>
+    </qresource>
+</RCC>

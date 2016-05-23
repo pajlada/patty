@@ -1,10 +1,16 @@
 #ifndef IRCCLIENT_H
 #define IRCCLIENT_H
 
+#include "pattyircmessage.h"
+
+#include <QMap>
 #include <QSet>
+#include <QList>
+#include <QObject>
 #include <QString>
+#include <QSettings>
+#include <IrcCommand>
 #include <IrcConnection>
-#include <src/pattyircmessage.h>
 
 /* Responsible for managing connections */
 

@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "loginwindow.h"
+#include "emotemanager.h"
 #include <QApplication>
 #include <QtNetwork/QSslSocket>
 #include <QMessageBox>
@@ -52,7 +53,6 @@ main(int argc, char *argv[])
             return 0;
         }
     }
-
     w.show();
 
     return a.exec();

@@ -1,15 +1,14 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include "emotemanager.h"
 #include "pattyircmessage.h"
-#include "animatedtextbrowser.h"
 
 #include <QMainWindow>
 #include <QMap>
 #include <QString>
 #include <QTextBrowser>
 #include <QRegularExpression>
+#include <QWebFrame>
 
 namespace Ui {
 class MainWindow;
@@ -38,6 +37,8 @@ public:
 private slots:
     void on_wSend_clicked();
     void on_cJoin_clicked();
+    void chatContentsSizeChanged(const QSize &size);
+    void linkClicked(const QUrl &url);
 
 private:
     Ui::MainWindow *ui;
@@ -46,6 +47,9 @@ private:
 
     QString currentChannel;
     int currentMessages;
+
+    int scrollValue;
+    bool autoScroll;
 };
 
 #endif // MAINWINDOW_H

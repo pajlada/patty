@@ -6,6 +6,7 @@
 
 QT       += core gui
 QT       += network
+QT       += webkitwidgets
 
 CONFIG += communi c++11
 COMMUNI += core model util
@@ -25,18 +26,17 @@ SOURCES += src/main.cpp\
     src/ircclient.cpp \
     src/emotemanager.cpp \
     src/loginwindow.cpp \
-    src/animatedtextbrowser.cpp \
     src/pattyircmessage.cpp
 
 HEADERS  += src/mainwindow.h \
     src/ircclient.h \
     src/emotemanager.h \
     src/loginwindow.h \
-    src/animatedtextbrowser.h \
     src/pattyircmessage.h \
     src/mentionmanager.h
 
-RESOURCES += lib/QDarkStyleSheet/qdarkstyle/style.qrc
+RESOURCES += lib/QDarkStyleSheet/qdarkstyle/style.qrc \
+    main.qrc
 
 FORMS    += src/ui/mainwindow.ui \
     src/ui/loginwindow.ui

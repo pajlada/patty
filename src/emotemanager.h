@@ -1,12 +1,17 @@
 #ifndef EMOTEMANAGER_H
 #define EMOTEMANAGER_H
 
-#include <QImage>
 #include <QMap>
-#include <QNetworkAccessManager>
-#include <QSignalMapper>
+#include <QUrl>
 #include <QByteArray>
+#include <QEventLoop>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QNetworkReply>
+#include <QNetworkRequest>
 #include <QRegularExpression>
+#include <QNetworkAccessManager>
 
 class BttvEmote
 {
@@ -18,33 +23,38 @@ public:
     QRegularExpression regex;
 };
 
+class FfzEmote
+{
+public:
+    FfzEmote(int _id, QString _code);
+
+    int id;
+    QString code;
+    QRegularExpression regex;
+};
+
 class EmoteManager : public QObject
 {
     Q_OBJECT
 
 public:
-    EmoteManager();
+    void getTwitchEmotes();
 
-    int get_twitch_emote(int emote_id);
-    int getBttvEmote(const BttvEmote &emote);
-
-    int downloadBttvEmote(const BttvEmote &emote);
+    void getBttvEmotes();
+    void getFfzEmotes();
 
     void getBttvChannelEmotes(const QString &channel);
+    void getFfzChannelEmotes(const QString &channel);
 
-    QMap<int, QImage> twitch_emotes;
-    QMap<QString, QImage> bttvEmotesCache;
-
+    QMap<int, QString> emote_ids;
     QList<BttvEmote> bttvEmotes;
+    QList<FfzEmote> ffzEmotes;
     QMap<QString, QList<BttvEmote> > bttvChannelEmotes;
+    QMap<QString, QList<FfzEmote> > ffzChannelEmotes;
 
     QString emote_folder;
-
 private:
     QNetworkAccessManager network_access_manager;
-
-    void getBaseEmote(QString url, QMap<int, QImage> *emotes, int emote_id);
-    void getBaseEmote(QString url, QMap<QString, QImage> *emotes, QString emote_id);
 };
 
 #endif // EMOTEMANAGER_H

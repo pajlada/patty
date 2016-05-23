@@ -1,9 +1,6 @@
 #include "ircclient.h"
 #include "ircconnection.h"
 
-#include <QSettings>
-#include <IrcCommand>
-
 IrcClient::IrcClient(QObject *parent)
     : IrcConnection(parent),
     channels()
